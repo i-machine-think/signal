@@ -9,11 +9,15 @@ from helpers.utils_helper import UtilsHelper
 
 
 class ShapesSingleModel(ShapesSender):
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        **kwargs):
         kwargs["reset_params"] = False
         super().__init__(*args, **kwargs)
 
         self.utils_helper = UtilsHelper()
+        self.device = super().device
 
         self.output_module = ShapesMetaVisualModule(
             hidden_size=kwargs["hidden_size"],
@@ -43,18 +47,15 @@ class ShapesSingleModel(ShapesSender):
                 self.rnn.bias_hh[self.hidden_size: 2 * self.hidden_size], val=1
             )
 
-    def forward(self, hidden_state=None, messages=None, device=None, tau=1.2):
+    def forward(self, hidden_state=None, messages=None, tau=1.2):
         """
         Merged version of Sender and Receiver
         """
-        if device is None:
-            # if torch.cuda.is_available() else "cpu")
-            device = torch.device("cuda")
 
         if messages is None:
             hidden_state = self.input_module(hidden_state)
             state, batch_size = self._init_state(
-                hidden_state, type(self.rnn), device)
+                hidden_state, type(self.rnn))
 
             # Init output
             if self.training:
@@ -62,7 +63,7 @@ class ShapesSingleModel(ShapesSender):
                     torch.zeros(
                         (batch_size, self.vocab_size),
                         dtype=torch.float32,
-                        device=device,
+                        device=self.device,
                     )
                 ]
                 output[0][:, self.sos_id] = 1.0
@@ -72,21 +73,21 @@ class ShapesSingleModel(ShapesSender):
                         (batch_size,),
                         fill_value=self.sos_id,
                         dtype=torch.int64,
-                        device=device,
+                        device=self.device,
                     )
                 ]
 
             # Keep track of sequence lengths
             initial_length = self.output_len + 1  # add the sos token
             seq_lengths = (
-                torch.ones([batch_size], dtype=torch.int64, device=device)
+                torch.ones([batch_size], dtype=torch.int64, device=self.device)
                 * initial_length
             )
 
             embeds = []  # keep track of the embedded sequence
             entropy = 0.0
             sentence_probability = torch.zeros(
-                (batch_size, self.vocab_size), device=device
+                (batch_size, self.vocab_size), device=self.device
             )
 
             for i in range(self.output_len):
@@ -143,9 +144,9 @@ class ShapesSingleModel(ShapesSender):
             )
 
             # initialize hidden
-            h = torch.zeros([batch_size, self.hidden_size], device=device)
+            h = torch.zeros([batch_size, self.hidden_size], device=self.device)
             if self.cell_type == "lstm":
-                c = torch.zeros([batch_size, self.hidden_size], device=device)
+                c = torch.zeros([batch_size, self.hidden_size], device=self.device)
                 h = (h, c)
 
             # make sequence_length be first dim

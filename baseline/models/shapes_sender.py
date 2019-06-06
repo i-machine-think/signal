@@ -14,6 +14,7 @@ class ShapesSender(nn.Module):
         vocab_size,
         output_len,
         sos_id,
+        device,
         eos_id=None,
         embedding_size=256,
         hidden_size=512,
@@ -21,14 +22,15 @@ class ShapesSender(nn.Module):
         cell_type="lstm",
         genotype=None,
         dataset_type="meta",
-        reset_params=True,
-    ):
+        reset_params=True):
+
         super().__init__()
         self.vocab_size = vocab_size
         self.cell_type = cell_type
         self.output_len = output_len
         self.sos_id = sos_id
         self.utils_helper = UtilsHelper()
+        self.device = device
 
         if eos_id is None:
             self.eos_id = sos_id
@@ -80,7 +82,7 @@ class ShapesSender(nn.Module):
                 self.rnn.bias_hh[self.hidden_size : 2 * self.hidden_size], val=1
             )
 
-    def _init_state(self, hidden_state, rnn_type, device):
+    def _init_state(self, hidden_state, rnn_type):
         """
             Handles the initialization of the first hidden state of the decoder.
             Hidden state + cell state in the case of an LSTM cell or
@@ -96,14 +98,14 @@ class ShapesSender(nn.Module):
         # h0
         if hidden_state is None:
             batch_size = 1
-            h = torch.zeros([batch_size, self.hidden_size], device=device)
+            h = torch.zeros([batch_size, self.hidden_size], device=self.device)
         else:
             batch_size = hidden_state.shape[0]
             h = hidden_state  # batch_size, hidden_size
 
         # c0
         if rnn_type is nn.LSTMCell:
-            c = torch.zeros([batch_size, self.hidden_size], device=device)
+            c = torch.zeros([batch_size, self.hidden_size], device=self.device)
             state = (h, c)
         else:
             state = h
@@ -129,23 +131,21 @@ class ShapesSender(nn.Module):
         mask *= seq_lengths == initial_length
         seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended
 
-    def forward(self, tau=1.2, hidden_state=None, device=None):
+    def forward(self, tau=1.2, hidden_state=None):
         """
         Performs a forward pass. If training, use Gumbel Softmax (hard) for sampling, else use
         discrete sampling.
         Hidden state here represents the encoded image/metadata - initializes the RNN from it.
         """
-        if device is None:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         hidden_state = self.input_module(hidden_state)
-        state, batch_size = self._init_state(hidden_state, type(self.rnn), device)
+        state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output
         if self.training:
             output = [
                 torch.zeros(
-                    (batch_size, self.vocab_size), dtype=torch.float32, device=device
+                    (batch_size, self.vocab_size), dtype=torch.float32, device=self.device
                 )
             ]
             output[0][:, self.sos_id] = 1.0
@@ -155,19 +155,19 @@ class ShapesSender(nn.Module):
                     (batch_size,),
                     fill_value=self.sos_id,
                     dtype=torch.int64,
-                    device=device,
+                    device=self.device,
                 )
             ]
 
         # Keep track of sequence lengths
         initial_length = self.output_len + 1  # add the sos token
         seq_lengths = (
-            torch.ones([batch_size], dtype=torch.int64, device=device) * initial_length
+            torch.ones([batch_size], dtype=torch.int64, device=self.device) * initial_length
         )
 
         embeds = []  # keep track of the embedded sequence
         entropy = 0.0
-        sentence_probability = torch.zeros((batch_size, self.vocab_size), device=device)
+        sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
 
         for i in range(self.output_len):
             if self.training:

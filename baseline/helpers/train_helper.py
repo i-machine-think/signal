@@ -5,6 +5,9 @@ import torch
 from metrics.average_meter import AverageMeter
 
 class TrainHelper():
+    def __init__(self, device):
+        self.device = device
+
     def train_one_batch(self, model, batch, optimizer):
         """
         Train for single batch
@@ -13,7 +16,7 @@ class TrainHelper():
         optimizer.zero_grad()
 
         target, distractors = batch
-        loss, acc, messages = model(target, distractors)
+        loss, acc, _ = model(target, distractors)
 
         loss.backward()
         optimizer.step()
@@ -139,5 +142,5 @@ class TrainHelper():
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-        if torch.cuda.is_available():
+        if self.device.type == 'cuda':
             torch.cuda.manual_seed(seed)

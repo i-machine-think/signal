@@ -8,17 +8,18 @@ class ShapesReceiver(nn.Module):
     def __init__(
         self,
         vocab_size,
+        device,
         embedding_size=256,
         hidden_size=512,
         cell_type="lstm",
         genotype=None,
-        dataset_type="meta",
-    ):
+        dataset_type="meta"):
         super().__init__()
 
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.cell_type = cell_type
+        self.device = device
 
         self.input_module = ShapesMetaVisualModule(
             hidden_size=hidden_size, dataset_type=dataset_type, sender=False
@@ -51,11 +52,7 @@ class ShapesReceiver(nn.Module):
                 self.rnn.bias_hh[self.hidden_size : 2 * self.hidden_size], val=1
             )
 
-    def forward(self, messages=None, device=None):
-
-        if device is None:
-            device = torch.device("cuda")# if torch.cuda.is_available() else "cpu")
-
+    def forward(self, messages=None):
         batch_size = messages.shape[0]
 
         emb = (
@@ -65,9 +62,9 @@ class ShapesReceiver(nn.Module):
         )
 
         # initialize hidden
-        h = torch.zeros([batch_size, self.hidden_size], device=device)
+        h = torch.zeros([batch_size, self.hidden_size], device=self.device)
         if self.cell_type == "lstm":
-            c = torch.zeros([batch_size, self.hidden_size], device=device)
+            c = torch.zeros([batch_size, self.hidden_size], device=self.device)
             h = (h, c)
 
         # make sequence_length be first dim

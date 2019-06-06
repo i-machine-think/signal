@@ -14,7 +14,7 @@ from models.shapes_single_model import ShapesSingleModel
 from models.shapes_meta_visual_module import ShapesMetaVisualModule
 
 
-def get_sender_receiver(args):
+def get_sender_receiver(device, args):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
 
@@ -55,6 +55,7 @@ def get_sender_receiver(args):
                 args.vocab_size,
                 args.max_length,
                 vocab.bound_idx,
+                device,
                 embedding_size=args.embedding_size,
                 hidden_size=args.hidden_size,
                 greedy=args.greedy,
@@ -64,6 +65,7 @@ def get_sender_receiver(args):
             )
             receiver = ShapesReceiver(
                 args.vocab_size,
+                device,
                 embedding_size=args.embedding_size,
                 hidden_size=args.hidden_size,
                 cell_type=cell_type,
@@ -110,10 +112,10 @@ def get_sender_receiver(args):
     return sender, receiver
 
 
-def get_trainer(sender, receiver, args):
+def get_trainer(sender, receiver, device, args):
     extract_features = args.dataset_type == "raw"
 
-    return ShapesTrainer(sender, receiver, extract_features=extract_features)
+    return ShapesTrainer(sender, receiver, device, extract_features=extract_features)
 
 
 def get_training_data(args):

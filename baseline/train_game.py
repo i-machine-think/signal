@@ -12,8 +12,6 @@ from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
 
-# device = torch.device("cuda")  # if torch.cuda.is_available() else "cpu")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def parse_arguments(args):
@@ -174,6 +172,11 @@ def parse_arguments(args):
     )
     parser.add_argument("--disable-print",
                         help="Disable printing", action="store_true")
+                        
+    parser.add_argument(
+        "--device",
+        type=str,
+        help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
 
     args = parser.parse_args(args)
 
@@ -188,8 +191,14 @@ def baseline(args):
 
     args = parse_arguments(args)
 
+    if args.device:
+        device = torch.device(args.device)
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
     file_helper = FileHelper()
-    train_helper = TrainHelper()
+    train_helper = TrainHelper(device)
     train_helper.seed_torch(seed=args.seed)
 
     model_name = train_helper.get_filename_from_baseline_params(args)
@@ -198,14 +207,14 @@ def baseline(args):
     metrics_helper = MetricsHelper(run_folder, args.seed)
 
     # get sender and receiver models and save them
-    sender, receiver = get_sender_receiver(args)
+    sender, receiver = get_sender_receiver(device, args)
 
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
     torch.save(sender, sender_file)
     torch.save(receiver, receiver_file)
 
-    model = get_trainer(sender, receiver, args)
+    model = get_trainer(sender, receiver, device, args)
 
     if not os.path.exists(file_helper.model_checkpoint_path):
         print('No checkpoint exists. Saving model...\r')
@@ -276,7 +285,7 @@ def baseline(args):
 
             i += 1
 
-    best_model = get_trainer(sender, receiver, args)
+    best_model = get_trainer(sender, receiver, device, args)
     state = torch.load(
         "{}/best_model".format(run_folder),
         map_location=lambda storage, location: storage,

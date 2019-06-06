@@ -4,7 +4,12 @@ import torch.nn as nn
 from .shapes_cnn import ShapesCNN
 
 class ShapesTrainer(nn.Module):
-    def __init__(self, sender, receiver, extract_features=False, device=None):
+    def __init__(
+        self,
+        sender,
+        receiver,
+        device,
+        extract_features=False):
         super().__init__()
 
         self.sender = sender
@@ -15,8 +20,6 @@ class ShapesTrainer(nn.Module):
             self.visual_module = ShapesCNN(sender.hidden_size)
 
         self.device = device
-        if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def _pad(self, messages, seq_lengths):
         """
@@ -50,11 +53,10 @@ class ShapesTrainer(nn.Module):
             target = self.visual_module(target)
             distractors = [self.visual_module(d) for d in distractors]
 
-        messages, lengths, entropy, h_s, sent_p = self.sender(
-            hidden_state=target, device=self.device
-        )
+        messages, lengths, entropy, h_s, sent_p = self.sender(hidden_state=target)
+
         messages = self._pad(messages, lengths)
-        r_transform, h_r = self.receiver(messages=messages, device=self.device)
+        r_transform, h_r = self.receiver(messages=messages)
 
         loss = 0
 
