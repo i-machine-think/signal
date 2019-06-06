@@ -136,7 +136,7 @@ class ShapesSender(nn.Module):
         Hidden state here represents the encoded image/metadata - initializes the RNN from it.
         """
         if device is None:
-            device = torch.device("cuda")# if torch.cuda.is_available() else "cpu")
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         hidden_state = self.input_module(hidden_state)
         state, batch_size = self._init_state(hidden_state, type(self.rnn), device)

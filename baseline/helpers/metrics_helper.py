@@ -9,7 +9,7 @@ from metrics.entropy import language_entropy
 
 class MetricsHelper:
     def __init__(self, run_folder, seed):
-        self._writer = SummaryWriter(logdir=run_folder + "/" + str(seed))
+        self._writer = SummaryWriter(log_dir=run_folder + "/" + str(seed))
         self._run_folder = run_folder
         self._best_valid_acc = -1
         self._running_loss = 0.0

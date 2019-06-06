@@ -13,7 +13,7 @@ class ShapesMetaVisualModule(nn.Module):
         self.dataset_type = dataset_type
         self.features_dim = features_dim
         self.hidden_size = hidden_size
-        self.process = False ## TODO ?
+        self.process = True#False ## TODO ?
 
         if dataset_type == "features":
             if features_dim == hidden_size:

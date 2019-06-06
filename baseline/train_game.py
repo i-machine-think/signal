@@ -12,7 +12,8 @@ from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
 
-device = torch.device("cuda")  # if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda")  # if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def parse_arguments(args):
@@ -40,7 +41,7 @@ def parse_arguments(args):
     parser.add_argument(
         "--dataset-type",
         type=str,
-        default="raw",
+        default="meta",
         metavar="S",
         help="type of input used by dataset pick from raw/features/meta (default features)",
     )

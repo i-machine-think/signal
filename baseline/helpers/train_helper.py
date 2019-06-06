@@ -27,11 +27,21 @@ class TrainHelper():
         hidden_sender, hidden_receiver = [], []
         messages, sentence_probabilities = [], []
 
+        #########################################
+        ############ DIAGNOSTIC CODE ############
+        #########################################
+        class_loss_meters = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
+        #########################################
+
         model.eval()
         for d in data:
             if len(d) == 2:  # shapes
                 target, distractors = d
-                loss, acc, msg, h_s, h_r, entropy, sent_p = model(target, distractors)
+                #########################################
+                ############ DIAGNOSTIC CODE ############
+                #########################################
+                loss, acc, msg, h_s, h_r, entropy, sent_p, class_losses = model(target, distractors)
+                #########################################
 
             if len(d) == 3:  # obverter task
                 first_image, second_image, label = d
@@ -43,6 +53,13 @@ class TrainHelper():
             acc_meter.update(acc.item())
             entropy_meter.update(entropy.item())
 
+            #########################################
+            ############ DIAGNOSTIC CODE ############
+            #########################################
+            for i, c in enumerate(class_loss_meters):
+                c.update(class_losses[i].item())
+            #########################################
+
             messages.append(msg)
             sentence_probabilities.append(sent_p)
             hidden_sender.append(h_s.detach().cpu().numpy())
@@ -50,6 +67,20 @@ class TrainHelper():
 
         hidden_sender = np.concatenate(hidden_sender)
         hidden_receiver = np.concatenate(hidden_receiver)
+
+        #########################################
+        ############ DIAGNOSTIC CODE ############
+        #########################################
+        classes = ['color', 'shape', 'size', 'pos_h', 'pos_w']
+        print()
+        for i,c in enumerate(classes):
+            print(
+                "Class {}: val accuracy: {}".format(
+                    c,
+                    class_loss_meters[i].avg,
+                )
+            )
+        #########################################
 
         if return_softmax:
             return (
@@ -108,5 +139,5 @@ class TrainHelper():
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-        # if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)

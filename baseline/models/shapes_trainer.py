@@ -16,7 +16,7 @@ class ShapesTrainer(nn.Module):
 
         self.device = device
         if device is None:
-            self.device = torch.device("cuda")# if torch.cuda.is_available() else "cpu")
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def _pad(self, messages, seq_lengths):
         """
@@ -84,6 +84,17 @@ class ShapesTrainer(nn.Module):
         if self.training:
             return torch.mean(loss), torch.mean(accuracy), messages
         else:
+            #########################################
+            ############ DIAGNOSTIC CODE ############
+            #########################################
+            losses = []
+            meta_predict_exp = torch.exp(r_transform).squeeze()
+            for m,n in enumerate(range(0,15,3)):
+                _, max_idx_pred = torch.max(meta_predict_exp[:,n:n+3], 1)
+                _, max_idx_target = torch.max(target.squeeze()[:,n:n+3], 1)
+                losses.append(torch.eq(max_idx_target, max_idx_pred).double().mean())
+            #########################################
+            
             return (
                 torch.mean(loss),
                 torch.mean(accuracy),
@@ -92,4 +103,5 @@ class ShapesTrainer(nn.Module):
                 h_r,
                 entropy,
                 sent_p,
+                losses,
             )

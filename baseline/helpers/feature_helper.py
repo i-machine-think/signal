@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from datasets.image_dataset import ImageDataset
 from .file_helper import FileHelper
 
-device = torch.device("cuda")  # if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 BATCH_SIZE = 16  # batch size used to extract features
 
