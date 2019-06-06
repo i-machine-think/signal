@@ -130,7 +130,7 @@ def get_training_data(args):
     return (train_data, valid_data, test_data, valid_meta_data, valid_features)
 
 
-def get_raw_data(args, dataset="valid"):
+def get_raw_data(args, dataset=DatasetType.Valid):
     if args.task == "shapes":
         valid_raw = get_shapes_features(dataset=dataset, mode="raw")
         return valid_raw

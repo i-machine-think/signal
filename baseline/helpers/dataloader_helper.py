@@ -163,10 +163,7 @@ def get_shapes_dataloader(
         k (int, opt): number of distractors
     """
 
-    if (
-        not os.path.exists(file_helper.train_features_path)
-        and dataset_type == "features"
-    ):
+    if not os.path.exists(file_helper.train_features_path):
         print("Features files not present - generating dataset")
         generate_shapes_dataset()
 

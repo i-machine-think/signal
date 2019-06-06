@@ -5,6 +5,7 @@ import pickle
 import argparse
 import sys
 import torch
+import os
 
 from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data
 from helpers.train_helper import TrainHelper
@@ -195,11 +196,6 @@ def baseline(args):
 
     metrics_helper = MetricsHelper(run_folder, args.seed)
 
-    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(args)
-
-    # dump arguments
-    pickle.dump(args, open(f'{run_folder}/experiment_params.p', "wb"))
-
     # get sender and receiver models and save them
     sender, receiver = get_sender_receiver(args)
 
@@ -209,6 +205,16 @@ def baseline(args):
     torch.save(receiver, receiver_file)
 
     model = get_trainer(sender, receiver, args)
+
+    if not os.path.exists(file_helper.model_checkpoint_path):
+        print('No checkpoint exists. Saving model...\r')
+        torch.save(model.visual_module, file_helper.model_checkpoint_path)
+        print('No checkpoint exists. Saving model...Done')
+
+    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(args)
+
+    # dump arguments
+    pickle.dump(args, open(f'{run_folder}/experiment_params.p', "wb"))
 
     pytorch_total_params = sum(p.numel() for p in model.parameters())
 
