@@ -1,15 +1,21 @@
+import random
+
 import torch
 import torch.nn as nn
 
 from .shapes_cnn import ShapesCNN
 
+from .shapes_receiver import ShapesReceiver
+from .shapes_sender import ShapesSender
+
+
 class ShapesTrainer(nn.Module):
     def __init__(
-        self,
-        sender,
-        receiver,
-        device,
-        extract_features=False):
+            self,
+            sender: ShapesSender,
+            receiver: ShapesReceiver,
+            device,
+            extract_features=False):
         super().__init__()
 
         self.sender = sender
@@ -36,7 +42,8 @@ class ShapesTrainer(nn.Module):
             mask = mask.type(dtype=messages.dtype)
             messages = messages * mask.unsqueeze(2)
             # give full probability (1) to eos tag (used as padding in this case)
-            messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
+            messages[:, :,
+                     self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
         else:
             # fill in the rest of message with eos
             messages = messages.masked_fill_(mask == 0, self.sender.eos_id)
@@ -53,10 +60,11 @@ class ShapesTrainer(nn.Module):
             target = self.visual_module(target)
             distractors = [self.visual_module(d) for d in distractors]
 
-        messages, lengths, entropy, h_s, sent_p = self.sender(hidden_state=target)
+        messages, lengths, entropy, h_s, sent_p = self.sender.forward(
+            hidden_state=target)
 
         messages = self._pad(messages, lengths)
-        r_transform, h_r = self.receiver(messages=messages)
+        r_transform, h_r = self.receiver.forward(messages=messages)
 
         loss = 0
 
@@ -66,21 +74,29 @@ class ShapesTrainer(nn.Module):
         target_score = torch.bmm(target, r_transform).squeeze()  # scalar
 
         all_scores = torch.zeros((batch_size, 1 + len(distractors)))
-        all_scores[:, 0] = target_score
+        
+        target_index = 0 #random.randrange(0, len(distractors))
+        all_scores[:, target_index] = target_score
 
-        for i, d in enumerate(distractors):
+        i = 0
+        for d in distractors:
+            if i == target_index:
+                i += 1
+
             d = d.view(batch_size, 1, -1)
             d_score = torch.bmm(d, r_transform).squeeze()
-            all_scores[:, i + 1] = d_score
+            all_scores[:, i] = d_score
             loss += torch.max(
-                torch.tensor(0.0, device=self.device), 1.0 - target_score + d_score
+                torch.tensor(0.0, device=self.device), 1.0 -
+                target_score + d_score
             )
+            i += 1
 
         # Calculate accuracy
         all_scores = torch.exp(all_scores)
         _, max_idx = torch.max(all_scores, 1)
 
-        accuracy = max_idx == 0
+        accuracy = max_idx == target_index
         accuracy = accuracy.to(dtype=torch.float32)
 
         if self.training:
@@ -91,12 +107,13 @@ class ShapesTrainer(nn.Module):
             #########################################
             losses = []
             meta_predict_exp = torch.exp(r_transform).squeeze()
-            for m,n in enumerate(range(0,15,3)):
-                _, max_idx_pred = torch.max(meta_predict_exp[:,n:n+3], 1)
-                _, max_idx_target = torch.max(target.squeeze()[:,n:n+3], 1)
-                losses.append(torch.eq(max_idx_target, max_idx_pred).double().mean())
+            for m, n in enumerate(range(0, 15, 3)):
+                _, max_idx_pred = torch.max(meta_predict_exp[:, n:n+3], 1)
+                _, max_idx_target = torch.max(target.squeeze()[:, n:n+3], 1)
+                losses.append(
+                    torch.eq(max_idx_target, max_idx_pred).double().mean())
             #########################################
-            
+
             return (
                 torch.mean(loss),
                 torch.mean(accuracy),

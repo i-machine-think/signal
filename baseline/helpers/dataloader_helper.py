@@ -15,7 +15,7 @@ from enums.dataset_type import DatasetType
 
 file_helper = FileHelper()
 
-def get_shapes_features(dataset=DatasetType.Valid, mode="features"):
+def get_shapes_features(device, dataset=DatasetType.Valid, mode="features"):
     """
     Returns numpy array with matching features
     Args:
@@ -28,7 +28,7 @@ def get_shapes_features(dataset=DatasetType.Valid, mode="features"):
         if not os.path.isfile(features_path):
             images = np.load(file_helper.get_input_path(dataset))
 
-            features = get_features(images)
+            features = get_features(images, device)
             np.save(features_path, features)
             assert len(features) == len(images)
 
@@ -39,6 +39,7 @@ def get_shapes_features(dataset=DatasetType.Valid, mode="features"):
 
 
 def get_dataloaders(
+    device,
     batch_size=16,
     k=3,
     debug=False,
@@ -79,9 +80,9 @@ def get_dataloaders(
 
     if dataset_type == "features":
 
-        train_features = get_shapes_features(dataset=DatasetType.Train)
-        valid_features = get_shapes_features(dataset=DatasetType.Valid)
-        test_features = get_shapes_features(dataset=DatasetType.Test)
+        train_features = get_shapes_features(device, dataset=DatasetType.Train)
+        valid_features = get_shapes_features(device, dataset=DatasetType.Valid)
+        test_features = get_shapes_features(device, dataset=DatasetType.Test)
 
         if debug:
             train_features = train_features[:10000]
@@ -152,6 +153,7 @@ def get_dataloaders(
 
 
 def get_shapes_dataloader(
+        device,
         batch_size=16,
         k=3,
         debug=False,
@@ -168,6 +170,7 @@ def get_shapes_dataloader(
         generate_shapes_dataset()
 
     return get_dataloaders(
+        device,
         batch_size=batch_size,
         k=k,
         debug=debug,

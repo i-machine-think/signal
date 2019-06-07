@@ -13,7 +13,7 @@ class ShapesMetaVisualModule(nn.Module):
         self.dataset_type = dataset_type
         self.features_dim = features_dim
         self.hidden_size = hidden_size
-        self.process = True#False ## TODO ?
+        self.process = dataset_type == "meta" ## TODO ?
 
         if dataset_type == "features":
             if features_dim == hidden_size:
@@ -24,14 +24,15 @@ class ShapesMetaVisualModule(nn.Module):
                     if sender
                     else (hidden_size, features_dim)
                 )
-
-        if dataset_type == "meta":
+        elif dataset_type == "meta":
             self.process_input = nn.Linear(
                 *(meta_dim, hidden_size) if sender else (hidden_size, meta_dim)
             )
+        else:
+            self.process_input = None
 
     def reset_parameters(self):
-        if self.process:
+        if self.process and self.process_input:
             self.process_input.reset_parameters()
 
     def forward(self, input):

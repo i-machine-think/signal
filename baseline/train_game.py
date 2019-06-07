@@ -221,7 +221,7 @@ def baseline(args):
         torch.save(model.visual_module, file_helper.model_checkpoint_path)
         print('No checkpoint exists. Saving model...Done')
 
-    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(args)
+    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(device, args)
 
     # dump arguments
     pickle.dump(args, open(f'{run_folder}/experiment_params.p', "wb"))

@@ -21,12 +21,6 @@ def get_sender_receiver(device, args):
     if args.task == "shapes" and not args.obverter_setup:
         cell_type = "lstm"
         genotype = {}
-        if args.darts:
-            raise Exception('test')
-            # cell_type = "darts"
-            # genotype = generate_genotype(num_nodes=args.num_nodes)
-            # if not args.disable_print:
-            #     print(genotype)
         if args.single_model:
             sender = ShapesSingleModel(
                 args.vocab_size,
@@ -80,11 +74,6 @@ def get_sender_receiver(device, args):
     if args.receiver_path:
         receiver = torch.load(args.receiver_path)
 
-    if args.task == "shapes":
-        meta_vocab_size = 15
-    else:
-        meta_vocab_size = 13
-
     if args.task == "shapes" and not args.obverter_setup:
         if args.freeze_sender:
             for param in sender.parameters():
@@ -118,16 +107,17 @@ def get_trainer(sender, receiver, device, args):
     return ShapesTrainer(sender, receiver, device, extract_features=extract_features)
 
 
-def get_training_data(args):
+def get_training_data(device, args):
     # Load data
     train_data, valid_data, test_data = get_shapes_dataloader(
+        device=device,
         batch_size=args.batch_size,
         k=args.k,
         debug=args.debugging,
         dataset_type=args.dataset_type)
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
-    valid_features = get_shapes_features(dataset=DatasetType.Valid)
+    valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)
 
     return (train_data, valid_data, test_data, valid_meta_data, valid_features)
 
