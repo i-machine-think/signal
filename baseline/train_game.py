@@ -170,6 +170,12 @@ def parse_arguments(args):
         "--device",
         type=str,
         help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=5,
+        help="Amount of epochs to check for not improved validation score before early stopping",
+    )
 
     args = parser.parse_args(args)
 
@@ -239,11 +245,15 @@ def baseline(args):
 
     # Train
     i = 0
+    current_patience = args.patience
+    best_accuracy = -1.
+    converged = False
+
     while i < args.iterations:
         for train_batch in train_data:
             print(f'{i}/{args.iterations}       \r', end='')
 
-            loss, acc = train_helper.train_one_batch(
+            loss, _ = train_helper.train_one_batch(
                 model, train_batch, optimizer)
 
             if i % args.log_interval == 0:
@@ -251,6 +261,17 @@ def baseline(args):
                 valid_loss_meter, valid_acc_meter, valid_entropy_meter, valid_messages, hidden_sender, hidden_receiver = train_helper.evaluate(
                     model, valid_data
                 )
+
+                if valid_acc_meter.avg < best_accuracy:
+                    current_patience -= 1
+
+                    if current_patience <= 0:
+                        print('Model has converged. Stopping training...')
+                        converged = True
+                        break
+                else:
+                    best_accuracy = valid_acc_meter.avg
+                    current_patience = args.patience
 
                 metrics_helper.log_metrics(
                     model,
@@ -277,6 +298,9 @@ def baseline(args):
                     )
 
             i += 1
+        
+        if converged:
+            break
 
     best_model = get_trainer(sender, receiver, device, args)
     state = torch.load(
