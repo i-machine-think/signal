@@ -17,15 +17,9 @@ class ShapesCNN(nn.Module):
             nn.ReLU(),
             nn.Conv2d(n_filters, n_filters, 3, stride=2),
             nn.BatchNorm2d(n_filters),
-            nn.ReLU(),
-            nn.Conv2d(n_filters, n_filters, 3, stride=2),
-            nn.BatchNorm2d(n_filters),
-            nn.ReLU(),
-            nn.Conv2d(n_filters, n_filters, 3, stride=2),
-            nn.BatchNorm2d(n_filters),
-            nn.ReLU(),
+            nn.ReLU()
         )
-        self.lin = nn.Sequential(nn.Linear(180, n_out_features), nn.ReLU())
+        self.lin = nn.Sequential(nn.Linear(80, n_out_features), nn.ReLU())
 
         self._init_params()
 

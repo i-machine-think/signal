@@ -21,9 +21,10 @@ class ShapesReceiver(nn.Module):
         self.cell_type = cell_type
         self.device = device
 
-        self.input_module = ShapesMetaVisualModule(
-            hidden_size=hidden_size, dataset_type=dataset_type, sender=False
-        )
+        # This is only used when not training using raw data
+        # self.input_module = ShapesMetaVisualModule(
+        #     hidden_size=hidden_size, dataset_type=dataset_type, sender=False
+        # )
 
         if cell_type == "lstm":
             self.rnn = nn.LSTMCell(embedding_size, hidden_size)
@@ -42,7 +43,7 @@ class ShapesReceiver(nn.Module):
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
-        self.input_module.reset_parameters()
+        # self.input_module.reset_parameters()
         if type(self.rnn) is nn.LSTMCell:
             nn.init.xavier_uniform_(self.rnn.weight_ih)
             nn.init.orthogonal_(self.rnn.weight_hh)
@@ -75,6 +76,7 @@ class ShapesReceiver(nn.Module):
         if self.cell_type == "lstm":
             h = h[0]  # keep only hidden state
 
-        out = self.input_module(h)
+        out = h
+        # out = self.input_module(h)
 
         return out, emb

@@ -30,13 +30,6 @@ def parse_arguments(args):
         action="store_true",
     )
     parser.add_argument(
-        "--task",
-        type=str,
-        default="shapes",
-        metavar="S",
-        help="task to test on (default: shapes). Possible options: shapes or obverter",
-    )
-    parser.add_argument(
         "--dataset-type",
         type=str,
         default="meta",

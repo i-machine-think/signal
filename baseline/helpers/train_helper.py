@@ -112,14 +112,12 @@ class TrainHelper():
         if params.name:
             return params.name
 
-        name = params.task
-        name += "_{}".format(params.dataset_type)
+        name = params.dataset_type
         name += "_e_{}".format(params.embedding_size)
         name += "_h_{}".format(params.hidden_size)
         name += "_lr_{}".format(params.lr)
         name += "_max_len_{}".format(params.max_length)
-        if params.task == "shapes":
-            name += "_k_{}".format(params.k)
+        name += "_k_{}".format(params.k)
         name += "_vocab_{}".format(params.vocab_size)
         name += "_seed_{}".format(params.seed)
         name += "_btch_size_{}".format(params.batch_size)

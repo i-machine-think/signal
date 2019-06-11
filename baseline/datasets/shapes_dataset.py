@@ -32,8 +32,7 @@ class ShapesDataset:
         self.transforms = torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToPILImage(),
-                torchvision.transforms.Resize((128, 128), Image.LINEAR),
-                torchvision.transforms.ToTensor(),
+                torchvision.transforms.ToTensor()
             ]
         )
 

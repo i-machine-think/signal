@@ -18,85 +18,84 @@ def get_sender_receiver(device, args):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
 
-    if args.task == "shapes" and not args.obverter_setup:
-        cell_type = "lstm"
-        genotype = {}
-        if args.single_model:
-            sender = ShapesSingleModel(
-                args.vocab_size,
-                args.max_length,
-                vocab.bound_idx,
-                embedding_size=args.embedding_size,
-                hidden_size=args.hidden_size,
-                greedy=args.greedy,
-                cell_type=cell_type,
-                genotype=genotype,
-                dataset_type=args.dataset_type,
-            )
-            receiver = ShapesSingleModel(
-                args.vocab_size,
-                args.max_length,
-                vocab.bound_idx,
-                embedding_size=args.embedding_size,
-                hidden_size=args.hidden_size,
-                greedy=args.greedy,
-                cell_type=cell_type,
-                genotype=genotype,
-                dataset_type=args.dataset_type,
-            )
-        else:
-            sender = ShapesSender(
-                args.vocab_size,
-                args.max_length,
-                vocab.bound_idx,
-                device,
-                embedding_size=args.embedding_size,
-                hidden_size=args.hidden_size,
-                greedy=args.greedy,
-                cell_type=cell_type,
-                genotype=genotype,
-                dataset_type=args.dataset_type,
-            )
-            receiver = ShapesReceiver(
-                args.vocab_size,
-                device,
-                embedding_size=args.embedding_size,
-                hidden_size=args.hidden_size,
-                cell_type=cell_type,
-                genotype=genotype,
-                dataset_type=args.dataset_type,
-            )
+    cell_type = "lstm"
+    genotype = {}
+    if args.single_model:
+        sender = ShapesSingleModel(
+            args.vocab_size,
+            args.max_length,
+            vocab.bound_idx,
+            embedding_size=args.embedding_size,
+            hidden_size=args.hidden_size,
+            greedy=args.greedy,
+            cell_type=cell_type,
+            genotype=genotype,
+            dataset_type=args.dataset_type,
+        )
+        receiver = ShapesSingleModel(
+            args.vocab_size,
+            args.max_length,
+            vocab.bound_idx,
+            embedding_size=args.embedding_size,
+            hidden_size=args.hidden_size,
+            greedy=args.greedy,
+            cell_type=cell_type,
+            genotype=genotype,
+            dataset_type=args.dataset_type,
+        )
     else:
-        raise ValueError("Unsupported task type : {}".format(args.task))
+        sender = ShapesSender(
+            args.vocab_size,
+            args.max_length,
+            vocab.bound_idx,
+            device,
+            embedding_size=args.embedding_size,
+            hidden_size=args.hidden_size,
+            greedy=args.greedy,
+            cell_type=cell_type,
+            genotype=genotype,
+            dataset_type=args.dataset_type,
+        )
+        receiver = ShapesReceiver(
+            args.vocab_size,
+            device,
+            embedding_size=args.embedding_size,
+            hidden_size=args.hidden_size,
+            cell_type=cell_type,
+            genotype=genotype,
+            dataset_type=args.dataset_type,
+        )
 
     if args.sender_path:
         sender = torch.load(args.sender_path)
     if args.receiver_path:
         receiver = torch.load(args.receiver_path)
 
-    if args.task == "shapes" and not args.obverter_setup:
-        if args.freeze_sender:
-            for param in sender.parameters():
-                param.requires_grad = False
-        else:
-            s_visual_module = ShapesMetaVisualModule(
-                hidden_size=sender.hidden_size, dataset_type=args.dataset_type
-            )
-            sender.input_module = s_visual_module
-        if args.freeze_receiver:
-            for param in receiver.parameters():
-                param.requires_grad = False
-        else:
-            r_visual_module = ShapesMetaVisualModule(
-                hidden_size=receiver.hidden_size,
-                dataset_type=args.dataset_type,
-                sender=False,
-            )
 
-            if args.single_model:
-                receiver.output_module = r_visual_module
-            else:
-                receiver.input_module = r_visual_module
+    # This is only used when not training using raw data
+    # if args.freeze_sender:
+    #     for param in sender.parameters():
+    #         param.requires_grad = False
+    # else:
+    #     s_visual_module = ShapesMetaVisualModule(
+    #         hidden_size=sender.hidden_size, dataset_type=args.dataset_type
+    #     )
+    #     sender.input_module = s_visual_module
+
+    # if args.freeze_receiver:
+    #     for param in receiver.parameters():
+    #         param.requires_grad = False
+    # else:
+    #     r_visual_module = ShapesMetaVisualModule(
+    #         hidden_size=receiver.hidden_size,
+    #         dataset_type=args.dataset_type,
+    #         sender=False,
+    #     )
+
+    #     if args.single_model:
+    #         receiver.output_module = r_visual_module
+    #     else:
+    #         receiver.input_module = r_visual_module
 
     return sender, receiver
 

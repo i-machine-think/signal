@@ -37,9 +37,10 @@ class ShapesSender(nn.Module):
         else:
             self.eos_id = eos_id
 
-        self.input_module = ShapesMetaVisualModule(
-            hidden_size=hidden_size, dataset_type=dataset_type
-        )
+        # This is only used when not training using raw data
+        # self.input_module = ShapesMetaVisualModule(
+        #     hidden_size=hidden_size, dataset_type=dataset_type
+        # )
 
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
@@ -69,7 +70,7 @@ class ShapesSender(nn.Module):
         nn.init.constant_(self.linear_out.weight, 0)
         nn.init.constant_(self.linear_out.bias, 0)
 
-        self.input_module.reset_parameters()
+        # self.input_module.reset_parameters()
 
         if type(self.rnn) is nn.LSTMCell:
             nn.init.xavier_uniform_(self.rnn.weight_ih)
@@ -138,7 +139,7 @@ class ShapesSender(nn.Module):
         Hidden state here represents the encoded image/metadata - initializes the RNN from it.
         """
 
-        hidden_state = self.input_module(hidden_state)
+        # hidden_state = self.input_module(hidden_state)
         state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output

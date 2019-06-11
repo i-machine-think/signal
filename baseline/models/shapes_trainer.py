@@ -55,10 +55,11 @@ class ShapesTrainer(nn.Module):
 
         target = target.to(self.device)
         distractors = [d.to(self.device) for d in distractors]
-
+        
         if self.extract_features:
             target = self.visual_module(target)
             distractors = [self.visual_module(d) for d in distractors]
+
 
         messages, lengths, entropy, h_s, sent_p = self.sender.forward(
             hidden_state=target)
@@ -75,7 +76,7 @@ class ShapesTrainer(nn.Module):
 
         all_scores = torch.zeros((batch_size, 1 + len(distractors)))
         
-        target_index = 0 #random.randrange(0, len(distractors))
+        target_index = 0
         all_scores[:, target_index] = target_score
 
         i = 0
