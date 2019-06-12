@@ -64,7 +64,11 @@ class ShapesTrainer(nn.Module):
         messages, lengths, entropy, h_s, sent_p = self.sender.forward(
             hidden_state=target)
 
+        if not self.receiver:
+            return messages
+            
         messages = self._pad(messages, lengths)
+
         r_transform, h_r = self.receiver.forward(messages=messages)
 
         loss = 0

@@ -100,20 +100,20 @@ def get_sender_receiver(device, args):
     return sender, receiver
 
 
-def get_trainer(sender, receiver, device, args):
-    extract_features = args.dataset_type == "raw"
+def get_trainer(sender, receiver, device, dataset_type):
+    extract_features = dataset_type == "raw"
 
     return ShapesTrainer(sender, receiver, device, extract_features=extract_features)
 
 
-def get_training_data(device, args):
+def get_training_data(device, batch_size, k, debugging, dataset_type):
     # Load data
     train_data, valid_data, test_data = get_shapes_dataloader(
         device=device,
-        batch_size=args.batch_size,
-        k=args.k,
-        debug=args.debugging,
-        dataset_type=args.dataset_type)
+        batch_size=batch_size,
+        k=k,
+        debug=debugging,
+        dataset_type=dataset_type)
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
     valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)

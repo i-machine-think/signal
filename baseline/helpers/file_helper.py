@@ -124,3 +124,8 @@ class FileHelper:
 
     def get_set_path(self, set_name: str):
         set_path = os.path.join(self._data_path, f'{set_name}.input')
+        return set_path
+
+    def create_unique_sender_path(self, model_name: str):
+        sender_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, f'sender_{model_name}.p')
+        return sender_path

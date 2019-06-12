@@ -213,14 +213,19 @@ def baseline(args):
     torch.save(sender, sender_file)
     torch.save(receiver, receiver_file)
 
-    model = get_trainer(sender, receiver, device, args)
+    model = get_trainer(sender, receiver, device, args.dataset_type)
 
     if not os.path.exists(file_helper.model_checkpoint_path):
         print('No checkpoint exists. Saving model...\r')
         torch.save(model.visual_module, file_helper.model_checkpoint_path)
         print('No checkpoint exists. Saving model...Done')
 
-    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(device, args)
+    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(
+        device=device,
+        batch_size=args.batch_size,
+        k=args.k,
+        debugging=args.debugging,
+        dataset_type=args.dataset_type)
 
     # dump arguments
     pickle.dump(args, open(f'{run_folder}/experiment_params.p', "wb"))
@@ -272,6 +277,7 @@ def baseline(args):
                 else:
                     best_accuracy = valid_acc_meter.avg
                     current_patience = args.patience
+                    torch.save(model.sender, file_helper.create_unique_sender_path(model_name))
 
                 metrics_helper.log_metrics(
                     model,
@@ -302,7 +308,7 @@ def baseline(args):
         if converged:
             break
 
-    best_model = get_trainer(sender, receiver, device, args)
+    best_model = get_trainer(sender, receiver, device, args.dataset_type)
     state = torch.load(
         "{}/best_model".format(run_folder),
         map_location=lambda storage, location: storage,
