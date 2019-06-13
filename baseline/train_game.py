@@ -82,9 +82,9 @@ def parse_arguments(args):
     parser.add_argument(
         "--max-length",
         type=int,
-        default=5,
+        default=10,
         metavar="N",
-        help="max sentence length allowed for communication (default: 5)",
+        help="max sentence length allowed for communication (default: 10)",
     )
     parser.add_argument(
         "--k",
@@ -96,9 +96,9 @@ def parse_arguments(args):
     parser.add_argument(
         "--vocab-size",
         type=int,
-        default=5,
+        default=25,
         metavar="N",
-        help="Size of vocabulary (default: 5)",
+        help="Size of vocabulary (default: 25)",
     )
     parser.add_argument(
         "--darts",
@@ -184,7 +184,6 @@ def parse_arguments(args):
         args.max_length = 5
 
     return args
-
 
 def baseline(args):
 
