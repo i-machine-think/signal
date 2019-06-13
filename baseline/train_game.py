@@ -194,7 +194,6 @@ def baseline(args):
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
     file_helper = FileHelper()
     train_helper = TrainHelper(device)
     train_helper.seed_torch(seed=args.seed)
@@ -263,7 +262,7 @@ def baseline(args):
             if i % args.log_interval == 0:
 
                 valid_loss_meter, valid_acc_meter, valid_entropy_meter, valid_messages, hidden_sender, hidden_receiver = train_helper.evaluate(
-                    model, valid_data
+                    model, valid_data, valid_meta_data
                 )
 
                 if valid_acc_meter.avg < best_accuracy:

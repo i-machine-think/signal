@@ -61,7 +61,7 @@ class ShapesDataset:
             if self.raw:
                 target_img = self.transforms(target_img)
 
-            return (target_img, distractors)
+            return (target_img, distractors, indices)
 
     def __len__(self):
         if self.obverter_setup:

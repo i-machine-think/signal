@@ -4,6 +4,12 @@ import torch
 
 from metrics.average_meter import AverageMeter
 
+#########################################
+############ DIAGNOSTIC CODE ############
+#########################################
+PROPERTIES = ['Shape', 'Color', 'Size ', 'Pos_h', 'Pos_w']
+#########################################
+
 class TrainHelper():
     def __init__(self, device):
         self.device = device
@@ -15,7 +21,7 @@ class TrainHelper():
         model.train()
         optimizer.zero_grad()
 
-        target, distractors = batch
+        target, distractors, _ = batch
         loss, acc, _ = model(target, distractors)
 
         loss.backward()
@@ -23,7 +29,7 @@ class TrainHelper():
 
         return loss.item(), acc.item()
 
-    def evaluate(self, model, data, return_softmax=False):
+    def evaluate(self, model, data, valid_meta_data, return_softmax=False):
         loss_meter = AverageMeter()
         acc_meter = AverageMeter()
         entropy_meter = AverageMeter()
@@ -38,19 +44,37 @@ class TrainHelper():
 
         model.eval()
         for d in data:
-            if len(d) == 2:  # shapes
-                target, distractors = d
+            # NOTE, len==3 used to be 2, but due to diagnostic indices it is 3
+            if len(d) == 3:  # shapes
+                target, distractors, indices = d
                 #########################################
                 ############ DIAGNOSTIC CODE ############
                 #########################################
-                loss, acc, msg, h_s, h_r, entropy, sent_p, class_losses = model(target, distractors)
+                loss, acc, msg, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
                 #########################################
 
-            if len(d) == 3:  # obverter task
-                first_image, second_image, label = d
-                loss, acc, msg, h_s, h_r, entropy, sent_p = model(
-                    first_image, second_image, label
-                )
+                #########################################
+                ############ DIAGNOSTIC CODE ############
+                #########################################
+                print('\nValid accuracy', torch.mean(acc).item())
+                predicted_indices = torch.stack([ind[max_idx[i].item()] for i, ind in enumerate(indices)])
+
+                pred_metas = valid_meta_data[predicted_indices]
+                true_metas = valid_meta_data[indices[:,0]]
+
+                pred_chunks = np.hsplit(pred_metas,5)
+                true_chunks = np.hsplit(true_metas,5)
+
+                for i, p in enumerate(PROPERTIES):
+                    prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
+                    print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
+                #########################################
+
+            # if len(d) == 3:  # obverter task
+            #     first_image, second_image, label = d
+            #     loss, acc, msg, h_s, h_r, entropy, sent_p = model(
+            #         first_image, second_image, label
+            #     )
 
             loss_meter.update(loss.item())
             acc_meter.update(acc.item())
@@ -74,15 +98,15 @@ class TrainHelper():
         #########################################
         ############ DIAGNOSTIC CODE ############
         #########################################
-        classes = ['color', 'shape', 'size', 'pos_h', 'pos_w']
-        print()
-        for i,c in enumerate(classes):
-            print(
-                "Class {}: val accuracy: {}".format(
-                    c,
-                    class_loss_meters[i].avg,
-                )
-            )
+        # classes = ['color', 'shape', 'size', 'pos_h', 'pos_w']
+        # print()
+        # for i,c in enumerate(classes):
+        #     print(
+        #         "Class {}: val accuracy: {}".format(
+        #             c,
+        #             class_loss_meters[i].avg,
+        #         )
+        #     )
         #########################################
 
         if return_softmax:

@@ -128,4 +128,5 @@ class ShapesTrainer(nn.Module):
                 entropy,
                 sent_p,
                 losses,
+                max_idx,
             )
