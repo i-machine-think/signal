@@ -224,8 +224,6 @@ def baseline(args):
 			print(train_msg[i,:])
 
 
-	crash
-
 	print(train_msg.shape, train_props.shape, train_meta.shape)
 
 	# receiver model, but it might not work
