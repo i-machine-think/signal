@@ -124,11 +124,12 @@ class ShapesSender(nn.Module):
                 initial_length (int): The max possible sequence length (output_len + n_sos_symbols).
                 seq_pos (int): The current timestep.
         """
-        if self.training:
-            max_predicted, vocab_index = torch.max(token, dim=1)
-            mask = (vocab_index == self.eos_id) * (max_predicted == 1.0)
-        else:
-            mask = token == self.eos_id
+        # if self.training:
+        max_predicted, vocab_index = torch.max(token, dim=1)
+        mask = (vocab_index == self.eos_id) * (max_predicted == 1.0)
+        # else:
+            # mask = token == self.eos_id
+
         mask *= seq_lengths == initial_length
         seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended
 
@@ -143,22 +144,22 @@ class ShapesSender(nn.Module):
         state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output
-        if self.training:
-            output = [
-                torch.zeros(
-                    (batch_size, self.vocab_size), dtype=torch.float32, device=self.device
-                )
-            ]
-            output[0][:, self.sos_id] = 1.0
-        else:
-            output = [
-                torch.full(
-                    (batch_size,),
-                    fill_value=self.sos_id,
-                    dtype=torch.int64,
-                    device=self.device,
-                )
-            ]
+        # if self.training:
+        output = [
+            torch.zeros(
+                (batch_size, self.vocab_size), dtype=torch.float32, device=self.device
+            )
+        ]
+        output[0][:, self.sos_id] = 1.0
+        # else:
+        #     output = [
+        #         torch.full(
+        #             (batch_size,),
+        #             fill_value=self.sos_id,
+        #             dtype=torch.int64,
+        #             device=self.device,
+        #         )
+        #     ]
 
         # Keep track of sequence lengths
         initial_length = self.output_len + 1  # add the sos token
@@ -171,34 +172,34 @@ class ShapesSender(nn.Module):
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
 
         for i in range(self.output_len):
-            if self.training:
-                emb = torch.matmul(output[-1], self.embedding)
-            else:
-                emb = self.embedding[output[-1]]
+            # if self.training:
+            emb = torch.matmul(output[-1], self.embedding)
+            # else:
+            #     emb = self.embedding[output[-1]]
 
             embeds.append(emb)
             state = self.rnn(emb, state)
 
             if type(self.rnn) is nn.LSTMCell:
-                h, c = state
+                h, _ = state
             else:
                 h = state
 
             p = F.softmax(self.linear_out(h), dim=1)
             entropy += Categorical(p).entropy()
 
-            if self.training:
-                token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
-            else:
-                sentence_probability += p.detach()
-                if self.greedy:
-                    _, token = torch.max(p, -1)
+            # if self.training:
+            token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
+            # else:
+            #     sentence_probability += p.detach()
+            #     if self.greedy:
+            #         _, token = torch.max(p, -1)
 
-                else:
-                    token = Categorical(p).sample()
+            #     else:
+            #         token = Categorical(p).sample()
 
-                if batch_size == 1:
-                    token = token.unsqueeze(0)
+            #     if batch_size == 1:
+            #         token = token.unsqueeze(0)
 
             output.append(token)
 

@@ -277,18 +277,18 @@ def baseline(args):
                     current_patience = args.patience
                     torch.save(model.sender, file_helper.create_unique_sender_path(model_name))
 
-                metrics_helper.log_metrics(
-                    model,
-                    valid_meta_data,
-                    valid_features,
-                    valid_loss_meter,
-                    valid_acc_meter,
-                    valid_entropy_meter,
-                    valid_messages, 
-                    hidden_sender,
-                    hidden_receiver,
-                    loss,
-                    i)
+                # metrics_helper.log_metrics(
+                #     model,
+                #     valid_meta_data,
+                #     valid_features,
+                #     valid_loss_meter,
+                #     valid_acc_meter,
+                #     valid_entropy_meter,
+                #     valid_messages, 
+                #     hidden_sender,
+                #     hidden_receiver,
+                #     loss,
+                #     i)
 
                 # Skip for now
                 if not args.disable_print:

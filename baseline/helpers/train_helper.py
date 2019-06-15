@@ -39,7 +39,7 @@ class TrainHelper():
         #########################################
         ############ DIAGNOSTIC CODE ############
         #########################################
-        class_loss_meters = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
+        # class_loss_meters = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
         #########################################
 
         model.eval()
@@ -50,23 +50,23 @@ class TrainHelper():
                 #########################################
                 ############ DIAGNOSTIC CODE ############
                 #########################################
-                loss, acc, msg, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
+                loss, acc, msg = model(target, distractors) #, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
                 #########################################
 
                 #########################################
                 ############ DIAGNOSTIC CODE ############
                 #########################################
-                print('\nValid accuracy', torch.mean(acc).item())
-                predicted_indices = torch.stack([ind[max_idx[i].item()] for i, ind in enumerate(indices)])
+                # print('\nValid accuracy', torch.mean(acc).item())
+                # predicted_indices = torch.stack([ind[max_idx[i].item()] for i, ind in enumerate(indices)])
 
-                pred_metas = valid_meta_data[predicted_indices]
-                true_metas = valid_meta_data[indices[:,0]]
+                # pred_metas = valid_meta_data[predicted_indices]
+                # true_metas = valid_meta_data[indices[:,0]]
 
-                pred_chunks = np.hsplit(pred_metas,5)
-                true_chunks = np.hsplit(true_metas,5)
+                # pred_chunks = np.hsplit(pred_metas,5)
+                # true_chunks = np.hsplit(true_metas,5)
 
-                for i, p in enumerate(PROPERTIES):
-                    prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
+                # for i, p in enumerate(PROPERTIES):
+                #     prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
                     # print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
                 #########################################
 
@@ -78,22 +78,22 @@ class TrainHelper():
 
             loss_meter.update(loss.item())
             acc_meter.update(acc.item())
-            entropy_meter.update(entropy.item())
+            # entropy_meter.update(entropy.item())
 
             #########################################
             ############ DIAGNOSTIC CODE ############
             #########################################
-            for i, c in enumerate(class_loss_meters):
-                c.update(class_losses[i].item())
+            # for i, c in enumerate(class_loss_meters):
+            #     c.update(class_losses[i].item())
             #########################################
 
             messages.append(msg)
-            sentence_probabilities.append(sent_p)
-            hidden_sender.append(h_s.detach().cpu().numpy())
-            hidden_receiver.append(h_r.detach().cpu().numpy())
+            # sentence_probabilities.append(sent_p)
+            # hidden_sender.append(h_s.detach().cpu().numpy())
+            # hidden_receiver.append(h_r.detach().cpu().numpy())
 
-        hidden_sender = np.concatenate(hidden_sender)
-        hidden_receiver = np.concatenate(hidden_receiver)
+        # hidden_sender = np.concatenate(hidden_sender)
+        # hidden_receiver = np.concatenate(hidden_receiver)
 
         #########################################
         ############ DIAGNOSTIC CODE ############
