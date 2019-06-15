@@ -37,31 +37,21 @@ class ShapesDataset:
         )
 
     def __getitem__(self, indices):
+        target_idx = indices[0]
+        distractors_idxs = indices[1:]
 
-        if self.obverter_setup:
-            first_image = self.features[self.dataset[indices][0]]
-            second_image = self.features[self.dataset[indices][1]]
+        distractors = []
+        for d_idx in distractors_idxs:
+            distractor_img = self.features[d_idx]
             if self.raw:
-                first_image = self.transforms(first_image)
-                second_image = self.transforms(second_image)
-            target = self.dataset[indices][2]  # label
-            return (first_image, second_image, target)
-        else:
-            target_idx = indices[0]
-            distractors_idxs = indices[1:]
+                distractor_img = self.transforms(distractor_img)
+            distractors.append(distractor_img)
 
-            distractors = []
-            for d_idx in distractors_idxs:
-                distractor_img = self.features[d_idx]
-                if self.raw:
-                    distractor_img = self.transforms(distractor_img)
-                distractors.append(distractor_img)
+        target_img = self.features[target_idx]
+        if self.raw:
+            target_img = self.transforms(target_img)
 
-            target_img = self.features[target_idx]
-            if self.raw:
-                target_img = self.transforms(target_img)
-
-            return (target_img, distractors, indices)
+        return (target_img, distractors, indices)
 
     def __len__(self):
         if self.obverter_setup:
