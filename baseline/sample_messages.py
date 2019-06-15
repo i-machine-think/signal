@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 
-from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data
+from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data, get_meta_data
 from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
@@ -65,6 +65,12 @@ def generate_messages_filename(max_length, vocab_size, seed, set_type):
     name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}.{set_type}.messages.npy'
     return name
 
+def generate_properties_filename(max_length, vocab_size, seed, set_type):
+    """
+    Generates a filename from baseline params (see baseline.py)
+    """
+    name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}.{set_type}.properties.npy'
+    return name
 
 def baseline(args):
 
@@ -80,7 +86,7 @@ def baseline(args):
 
     # get sender and receiver models and save them
     # sender, receiver = get_sender_receiver(device, args)
-    sender = torch.load(args.sender_path)
+    sender = torch.load(args.sender_path, map_location=device)
 
     model = get_trainer(sender, None, device, "raw")
 
@@ -97,6 +103,12 @@ def baseline(args):
     validation_messages = []
     test_messages = []
 
+    # Added the train properties
+    train_properties = []
+
+    # Added meta data, but get_meta_data() must be imported from game_helper
+    train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
+
     model.eval()
 
     if not os.path.exists(args.output_path):
@@ -104,13 +116,21 @@ def baseline(args):
 
     for i, train_batch in enumerate(train_data):
         print(f'Train: {i}/{len(train_data)}       \r', end='')
-        target, distractors = train_batch
+        target, distractors, indices = train_batch
         current_messages = model(target, distractors)
         train_messages.extend(current_messages.cpu().tolist())
+        # Added properties to be saved
+        train_properties.extend(train_properties.cpu().tolist())
 
     train_messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, "train")
     train_messages_filepath = os.path.join(args.output_path,  train_messages_filename)
     np.save(train_messages_filepath, np.array(train_messages))
+
+    # Added lines to save properties as np.save as well
+    # Seperate file is made, similar to generate_messages_filename
+    train_properties_filename = generate_properties_filename(args.max_length, args.vocab_size, args.seed, "train")
+    train_properties_filepath = os.path.join(args.output_path,  train_properties_filename)
+    np.save(train_properties_filepath, np.array(train_properties))
 
     for i, validation_batch in enumerate(validation_data):
         print(f'Validation: {i}/{len(validation_data)}       \r', end='')
