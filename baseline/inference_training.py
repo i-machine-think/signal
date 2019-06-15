@@ -189,6 +189,7 @@ def parse_arguments(args):
 
 	return args
 
+
 def baseline(args):
 	args = parse_arguments(args)
 
@@ -217,60 +218,55 @@ def baseline(args):
 
 	# print(train_msg.shape, train_props.shape, train_meta.shape)
 
-	# receiver model, but it might not work
-	# cell_type = "lstm"
-	# genotype = {}
-	# receiver = ShapesReceiver(
-	# 		args.vocab_size,
-	# 		device,
-	# 		embedding_size=args.embedding_size,
-	# 		hidden_size=args.hidden_size,
-	# 		cell_type=cell_type,
-	# 		genotype=genotype,
-	# 		dataset_type='inference',
-	# 	)
-
 	batch_size = 1024
-	
+
 	models = []
 	for i in range(5):
 		model = DiagnosticRNN(
-			3,
-			batch_size
+			3,#2 if i == 2 else 3,
+			batch_size=batch_size,
+			device=device
 		)
-		
+
 		model.to(device)
 		models.append(model)
-		
-	# receiver = model
-	# crash
+
 	# Setup the loss and optimizer
-	criterions = [nn.CrossEntropyLoss(), nn.CrossEntropyLoss(
-	), nn.CrossEntropyLoss(), nn.CrossEntropyLoss(), nn.CrossEntropyLoss()]
-	optimizers = [optim.RMSprop(model.parameters()), optim.RMSprop(model.parameters()), optim.RMSprop(
-		model.parameters()), optim.RMSprop(model.parameters()), optim.RMSprop(model.parameters())]
+	criterions = [nn.CrossEntropyLoss(), nn.CrossEntropyLoss(), nn.CrossEntropyLoss(),
+				  nn.CrossEntropyLoss(), nn.CrossEntropyLoss()]
+
+	optimizers = [optim.SGD(models[0].parameters(), lr=0.001), optim.SGD(models[1].parameters(), lr=0.001), optim.SGD(models[2].parameters(), lr=0.001),
+				  optim.SGD(models[3].parameters(), lr=0.001), optim.SGD(models[4].parameters(), lr=0.001)]
 
 	for _ in range(10000):
 		for i in range(0, train_msg.shape[0], batch_size):
 			print(f'{i}		\r', end='')
-			msg_batch = torch.tensor(train_msg[i:i+batch_size, :]).float().unsqueeze(0).to(device)
-
+			msg_batch = torch.tensor(
+				train_msg[i:i+batch_size, :, :], device=device, dtype=torch.float32)
+			
 			for img_property in range(5):
-				# for i in range(0,train_msg.shape[0],args.batch_size):
 				# get data in batches
-				props_batch = torch.tensor(train_props[i:i+batch_size, img_property]).long().to(device)
+				props_batch = torch.tensor(train_props[i:i+batch_size, img_property], device=device, dtype=torch.int64)
 
-				optimizers[img_property].zero_grad()
 
 				out = models[img_property].forward(msg_batch)
+				# out = model.forward(msg_batch)
+
 				loss = criterions[img_property].forward(out, props_batch)
+				# loss = criterion.forward(out, props_batch)
+				
 				loss.backward()
 
-				# clip grad norm?
 				optimizers[img_property].step()
+				# optimizer.step()
+
+				optimizers[img_property].zero_grad()
+				# optimizer.zero_grad()
+
 
 				# accuracy
-				acc = torch.mean((torch.argmax(out, dim=1) == props_batch).float())
+				acc = torch.mean(
+					(torch.argmax(out, dim=1) == props_batch).float())
 				if i % 20480 == 0:
 					print(acc.item())
 
@@ -280,7 +276,6 @@ def baseline(args):
 				# print('\nAccuracy',eqs.to(dtype=torch.float32).mean())
 			if i % 20480 == 0:
 				print("------------------")
-
 
 
 def get_message_file(datatype, length=10, vocab=25, seed=7):
