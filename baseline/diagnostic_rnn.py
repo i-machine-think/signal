@@ -4,28 +4,26 @@ import numpy as np
 
 class DiagnosticRNN(nn.Module):
 
-    def __init__(self, seq_length, num_classes, batch_size=64, input_dim=1, num_hidden=64, device='cpu'):
+    def __init__(self, num_classes, batch_size=64, embedding_size=256, num_hidden=512):
         super(DiagnosticRNN, self).__init__()
         
-        # weights and biases
-        self.Whx = torch.nn.Parameter(torch.randn(input_dim,num_hidden) / 1000)
-        self.Whh = torch.nn.Parameter(torch.randn(num_hidden,num_hidden) / 1000)
-        self.Wph = torch.nn.Parameter(torch.randn(num_hidden, num_classes) / 1000)
-        self.bh = torch.nn.Parameter(torch.zeros(1, num_hidden))
-        self.bp = torch.nn.Parameter(torch.zeros(1, num_classes))
+        self.embedding = nn.Parameter(
+            torch.empty((11, embedding_size), dtype=torch.float32)
+        )
 
-        self.seq_length = seq_length
-        self.batch_size = batch_size
-        self.num_hidden = num_hidden
+        # weights and biases
+        self.lstm = nn.LSTM(embedding_size, num_hidden, num_layers=1, batch_first=True)
+        self.fc = nn.Linear(num_hidden, num_classes)
+        self.softmax = nn.Softmax()
+        
 
     def forward(self, x):
-        h = torch.zeros(self.batch_size, self.num_hidden)
+        emb = (
+            torch.matmul(x, self.embedding)
+            if self.training
+            else self.embedding[x]
+        )
 
-        for t in range(self.seq_length):
-        	W1 = x[:,t].unsqueeze(dim=1) @ self.Whx
-        	W2 = h @ self.Whh
-        	h = torch.tanh(W1 + W2 + self.bh)
-
-        p = h @ self.Wph + self.bp
-
-        return p
+        lstm_out, _ = self.lstm.forward(emb)
+        fc_out = self.fc.forward(lstm_out).squeeze()
+        return fc_out
