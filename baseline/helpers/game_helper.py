@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 from data.agent_vocab import AgentVocab
-from .metadata_helper import get_shapes_metadata
+from .metadata_helper import get_shapes_metadata, get_metadata_properties
 from .dataloader_helper import get_shapes_features, get_shapes_dataloader
 
 from enums.dataset_type import DatasetType
@@ -104,6 +104,12 @@ def get_trainer(sender, receiver, device, dataset_type):
     extract_features = dataset_type == "raw"
 
     return ShapesTrainer(sender, receiver, device, extract_features=extract_features)
+
+def get_meta_data():
+    train_meta_data = get_metadata_properties(dataset=DatasetType.Train)
+    valid_meta_data = get_metadata_properties(dataset=DatasetType.Valid)
+    test_meta_data = get_metadata_properties(dataset=DatasetType.Test)
+    return train_meta_data, valid_meta_data, test_meta_data
 
 
 def get_training_data(device, batch_size, k, debugging, dataset_type):

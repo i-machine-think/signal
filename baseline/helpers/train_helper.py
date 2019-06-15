@@ -67,7 +67,7 @@ class TrainHelper():
 
                 for i, p in enumerate(PROPERTIES):
                     prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
-                    print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
+                    # print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
                 #########################################
 
             # if len(d) == 3:  # obverter task
