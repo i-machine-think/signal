@@ -207,26 +207,14 @@ def baseline(args):
 	# test_msg = get_message_file('test')
 	# test_props = get_metadata_properties(DatasetType.Test)[:test_msg.shape[0],:]
 
-	# print('Property = 1')
-	# for i, boolean in enumerate(train_props[:20,4] == 1):
-	# 	if boolean:
-	# 		print(train_msg[i,:])
-	# print('Property = 2')
-	# for i, boolean in enumerate(train_props[:20,4] == 0):
-	# 	if boolean:
-	# 		print(train_msg[i,:])
-
-	# print(train_msg.shape, train_props.shape, train_meta.shape)
-
 	batch_size = 1024
 
 	models = []
 	for i in range(5):
 		model = DiagnosticRNN(
-			3,#2 if i == 2 else 3,
+			2 if i == 2 else 3,
 			batch_size=batch_size,
-			device=device
-		)
+			device=device)
 
 		model.to(device)
 		models.append(model)
@@ -238,43 +226,39 @@ def baseline(args):
 	optimizers = [optim.SGD(models[0].parameters(), lr=0.001), optim.SGD(models[1].parameters(), lr=0.001), optim.SGD(models[2].parameters(), lr=0.001),
 				  optim.SGD(models[3].parameters(), lr=0.001), optim.SGD(models[4].parameters(), lr=0.001)]
 
-	for _ in range(10000):
+	for epoch in range(50):
+		accuracies = [[], [], [], [], []]
+		losses = [[], [], [], [], []]
+
 		for i in range(0, train_msg.shape[0], batch_size):
-			print(f'{i}		\r', end='')
+		# for i in range(0, 32, batch_size):
+			print(f'epoch: {epoch} | step: {i}		\r', end='')
 			msg_batch = torch.tensor(
-				train_msg[i:i+batch_size, :, :], device=device, dtype=torch.float32)
+				train_msg[i:i+batch_size, :], device=device, dtype=torch.float32)
 			
 			for img_property in range(5):
 				# get data in batches
 				props_batch = torch.tensor(train_props[i:i+batch_size, img_property], device=device, dtype=torch.int64)
 
-
 				out = models[img_property].forward(msg_batch)
-				# out = model.forward(msg_batch)
 
 				loss = criterions[img_property].forward(out, props_batch)
-				# loss = criterion.forward(out, props_batch)
-				
 				loss.backward()
 
+				losses[img_property].append(loss.item())
+
 				optimizers[img_property].step()
-				# optimizer.step()
 
-				optimizers[img_property].zero_grad()
-				# optimizer.zero_grad()
-
+				# optimizers[img_property].zero_grad()
 
 				# accuracy
 				acc = torch.mean(
 					(torch.argmax(out, dim=1) == props_batch).float())
-				if i % 20480 == 0:
-					print(acc.item())
-
-				# max_outs = torch.max(out,dim=1)[1]
-				# max_targets = torch.max(target,dim=2)[1]
-				# eqs = torch.eq(max_outs, max_targets)
-				# print('\nAccuracy',eqs.to(dtype=torch.float32).mean())
-			if i % 20480 == 0:
+				
+				accuracies[img_property].append(acc.item())
+			if i % 1280 == 0:
+				print(f'acc: {round(np.mean(accuracies[0]), 5)} | {round(np.mean(accuracies[1]), 4)} | {round(np.mean(accuracies[2]), 4)} | {round(np.mean(accuracies[3]), 4)} | {round(np.mean(accuracies[4]), 4)}')
+				print(f'loss: {round(np.mean(losses[0]), 4)} | {round(np.mean(losses[1]), 4)} | {round(np.mean(losses[2]), 4)} | {round(np.mean(losses[3]), 4)} | {round(np.mean(losses[4]), 4)}')
 				print("------------------")
 
 
