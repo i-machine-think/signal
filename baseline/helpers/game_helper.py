@@ -12,7 +12,7 @@ from models.shapes_sender import ShapesSender
 from models.shapes_trainer import ShapesTrainer
 from models.shapes_single_model import ShapesSingleModel
 from models.shapes_meta_visual_module import ShapesMetaVisualModule
-from models.diagnostic_rnn import DiagnosticRNN
+from models.diagnostic_ensemble import DiagnosticEnsemble
 
 
 def get_sender_receiver(device, args):
@@ -68,13 +68,9 @@ def get_sender_receiver(device, args):
         )
 
     if args.inference_step:
-        receiver = DiagnosticRNN(
-            # args.max_length, 
-            3,
-            device,
-            args.batch_size
-        )
-
+        receiver = DiagnosticEnsemble(
+            num_classes_by_model= [3, 3, 2, 3, 3],
+            device=device)
 
     if args.sender_path:
         sender = torch.load(args.sender_path)

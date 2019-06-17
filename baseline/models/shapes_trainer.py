@@ -64,37 +64,18 @@ class ShapesTrainer(nn.Module):
             distractors = [self.visual_module(d) for d in distractors]
 
 
-        messages, lengths, entropy, h_s, sent_p = self.sender.forward(
+        messages, lengths, _, _, _ = self.sender.forward(
             hidden_state=target)
 
         if not self.receiver:
             return messages
-            
-        messages = self._pad(messages, lengths)
 
         if self.inference_step:
-            criterion = nn.CrossEntropyLoss()
-            if len(messages.shape) == 3:
-                r_transform, h_r = self.receiver.forward(messages=messages[:,:,0])
-            else:
-                r_transform, h_r = self.receiver.forward(messages=messages)
-            loss = criterion(r_transform.float(), meta_data)
-            accuracy = (torch.argmax(r_transform, dim=1) == meta_data).float()
-            # if self.training:
-            return torch.mean(loss), torch.mean(accuracy), messages
-            # else:
-            #     return (
-            #     torch.mean(loss),
-            #     torch.mean(accuracy),
-            #     messages,
-            #     h_s,
-            #     h_r,
-            #     entropy,
-            #     sent_p,
-            #     None,
-            #     None,
-            # )
+            messages = messages.long()
+            accuracies, losses = self.receiver.forward(messages, meta_data)
+            return losses, accuracies, messages
         else:
+            messages = self._pad(messages, lengths)
             r_transform, h_r = self.receiver.forward(messages=messages)
 
             loss = 0
@@ -131,7 +112,7 @@ class ShapesTrainer(nn.Module):
             accuracy = accuracy.to(dtype=torch.float32)
 
             # if self.training:
-            return torch.mean(loss), torch.mean(accuracy), messages
+            return torch.mean(loss).item(), torch.mean(accuracy).item(), messages
             # else:
             #     #########################################
             #     ############ DIAGNOSTIC CODE ############

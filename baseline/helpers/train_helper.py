@@ -3,6 +3,7 @@ import numpy as np
 import torch
 
 from metrics.average_meter import AverageMeter
+from metrics.average_ensemble_meter import AverageEnsembleMeter
 
 #########################################
 ############ DIAGNOSTIC CODE ############
@@ -14,7 +15,7 @@ class TrainHelper():
     def __init__(self, device):
         self.device = device
 
-    def train_one_batch(self, model, batch, optimizer, meta_data):
+    def train_one_batch(self, model, batch, optimizer, meta_data, device, inference_step):
         """
         Train for single batch
         """
@@ -24,25 +25,32 @@ class TrainHelper():
         target, distractors, indices = batch
 
         # randomly selects class to update onto
-        c = np.random.randint(meta_data.shape[1]) # class_property
+        # c = np.random.randint(meta_data.shape[1]) # class_property
 
         # losses = []
         # accuracies = []
         # for c in range(meta_data.shape[1]):
-        md = torch.tensor(meta_data[indices[:,0],c])
-        loss, acc, _ = model(target, distractors, md)
+        md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
+        losses, accuracies, _ = model(target, distractors, md)
         # losses.append(loss)
         # accuracies.append(acc)
 
-        loss.backward()
-        optimizer.step()
+        # loss.backward()
+        # optimizer.step()
 
-        return loss.item(), acc.item()
+        return losses, accuracies
 
-    def evaluate(self, model, data, valid_meta_data, return_softmax=False):
-        loss_meter = AverageMeter()
-        acc_meter = AverageMeter()
+    def evaluate(self, model, data, valid_meta_data, device, inference_step, return_softmax=False, ):
+        
+        if inference_step:
+            loss_meter = AverageEnsembleMeter(5)
+            acc_meter = AverageEnsembleMeter(5)
+        else:
+            loss_meter = AverageMeter()
+            acc_meter = AverageMeter()
+        
         entropy_meter = AverageMeter()
+
         hidden_sender, hidden_receiver = [], []
         messages, sentence_probabilities = [], []
 
@@ -52,44 +60,37 @@ class TrainHelper():
         # class_loss_meters = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
         #########################################
 
-        c = 0 # for now only checks first class_property
         model.eval()
         for d in data:
             # NOTE, len==3 used to be 2, but due to diagnostic indices it is 3
-            if len(d) == 3:  # shapes
-                target, distractors, indices = d
-                #########################################
-                ############ DIAGNOSTIC CODE ############
-                #########################################
-                vmd = torch.tensor(valid_meta_data[indices[:,0],c]).long()
-                loss, acc, msg = model(target, distractors, vmd) #, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
-                #########################################
+        
+            target, distractors, indices = d
+            #########################################
+            ############ DIAGNOSTIC CODE ############
+            #########################################
+            vmd = torch.tensor(valid_meta_data[indices[:,0], :], device=device, dtype=torch.int64)
+            loss, acc, msg = model.forward(target, distractors, vmd) #, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
+            #########################################
 
-                #########################################
-                ############ DIAGNOSTIC CODE ############
-                #########################################
-                # print('\nValid accuracy', torch.mean(acc).item())
-                # predicted_indices = torch.stack([ind[max_idx[i].item()] for i, ind in enumerate(indices)])
+            #########################################
+            ############ DIAGNOSTIC CODE ############
+            #########################################
+            # print('\nValid accuracy', torch.mean(acc).item())
+            # predicted_indices = torch.stack([ind[max_idx[i].item()] for i, ind in enumerate(indices)])
 
-                # pred_metas = valid_meta_data[predicted_indices]
-                # true_metas = valid_meta_data[indices[:,0]]
+            # pred_metas = valid_meta_data[predicted_indices]
+            # true_metas = valid_meta_data[indices[:,0]]
 
-                # pred_chunks = np.hsplit(pred_metas,5)
-                # true_chunks = np.hsplit(true_metas,5)
+            # pred_chunks = np.hsplit(pred_metas,5)
+            # true_chunks = np.hsplit(true_metas,5)
 
-                # for i, p in enumerate(PROPERTIES):
-                #     prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
-                    # print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
-                #########################################
+            # for i, p in enumerate(PROPERTIES):
+            #     prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
+                # print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
+            #########################################
 
-            # if len(d) == 3:  # obverter task
-            #     first_image, second_image, label = d
-            #     loss, acc, msg, h_s, h_r, entropy, sent_p = model(
-            #         first_image, second_image, label
-            #     )
-
-            loss_meter.update(loss.item())
-            acc_meter.update(acc.item())
+            loss_meter.update(loss)
+            acc_meter.update(acc)
             # entropy_meter.update(entropy.item())
 
             #########################################

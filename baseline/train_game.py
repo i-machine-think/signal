@@ -264,14 +264,13 @@ def baseline(args):
         for train_batch in train_data:
             print(f'{i}/{args.iterations}       \r', end='')
 
-            loss, _ = train_helper.train_one_batch(
-                model, train_batch, optimizer, train_meta_data)
+            _, _ = train_helper.train_one_batch(
+                model, train_batch, optimizer, train_meta_data, device, args.inference_step)
 
             if i % args.log_interval == 0:
 
-                valid_loss_meter, valid_acc_meter, valid_entropy_meter, valid_messages, hidden_sender, hidden_receiver = train_helper.evaluate(
-                    model, valid_data, valid_meta_data
-                )
+                valid_loss_meter, valid_acc_meter, _, _, _, _ = train_helper.evaluate(
+                    model, valid_data, valid_meta_data, device, args.inference_step)
 
                 if valid_acc_meter.avg < best_accuracy:
                     current_patience -= 1
@@ -300,21 +299,25 @@ def baseline(args):
 
                 # Skip for now
                 if not args.disable_print:
-                    print(
-                        "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
-                            i,
-                            args.iterations,
-                            valid_loss_meter.avg,
-                            valid_acc_meter.avg,
+                    if args.inference_step:
+                        print(f'{i}/{args.iterations} ACC: | avg: {round(valid_acc_meter.avg, 4)} | {round(valid_acc_meter.averages[0], 4)} | {round(valid_acc_meter.averages[1], 4)} | {round(valid_acc_meter.averages[2], 4)} | {round(valid_acc_meter.averages[3], 4)} | {round(valid_acc_meter.averages[4], 4)}')
+                        print(f'{i}/{args.iterations} LOSS: | avg: {round(valid_loss_meter.avg, 4)} | {round(valid_loss_meter.averages[0], 4)} | {round(valid_loss_meter.averages[1], 4)} | {round(valid_loss_meter.averages[2], 4)} | {round(valid_loss_meter.averages[3], 4)} | {round(valid_loss_meter.averages[4], 4)}')
+                    else:
+                        print(
+                            "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
+                                i,
+                                args.iterations,
+                                valid_loss_meter.avg,
+                                valid_acc_meter.avg,
+                            )
                         )
-                    )
 
             i += 1
         
         if converged:
             break
 
-    best_model = get_trainer(sender, receiver, device, args.dataset_type)
+    best_model = get_trainer(sender, receiver, device, args.inference_step, args.dataset_type)
     state = torch.load(
         "{}/best_model".format(run_folder),
         map_location=lambda storage, location: storage,
@@ -323,7 +326,7 @@ def baseline(args):
     best_model.to(device)
     # Evaluate best model on test data
     _, test_acc_meter, _, test_messages, _, _ = train_helper.evaluate(
-        best_model, test_data)
+        best_model, test_data, device, args.inference_step)
     if not args.disable_print:
         print("Test accuracy: {}".format(test_acc_meter.avg))
 
