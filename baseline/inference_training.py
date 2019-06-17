@@ -4,6 +4,9 @@ import torch
 import os
 import numpy as np
 
+from torch.utils import data
+
+from datasets.diagnostic_dataset import DiagnosticDataset
 from enums.dataset_type import DatasetType
 from helpers.metadata_helper import get_metadata_properties
 from models.diagnostic_ensemble import DiagnosticEnsemble
@@ -81,20 +84,24 @@ def print_results(accuracies, losses, epoch, dataset: str):
     print(f'epoch: {epoch} | {dataset} acc: {round(mean_accuracies[0], 5)} | {round(mean_accuracies[1], 4)} | {round(mean_accuracies[2], 4)} | {round(mean_accuracies[3], 4)} | {round(mean_accuracies[4], 4)}')
     print(f'epoch: {epoch} | {dataset} loss: {round(mean_losses[0], 4)} | {round(mean_losses[1], 4)} | {round(mean_losses[2], 4)} | {round(mean_losses[3], 4)} | {round(mean_losses[4], 4)}')
 
-def perform_iteration(model, messages, properties, batch_size, device):
+def perform_iteration(model, dataloader, batch_size, device):
     accuracies = np.empty((5,))
     losses = np.empty((5,))
     
-    for i in range(0, messages.shape[0], batch_size):
-        messages_batch = torch.tensor(messages[i:i+batch_size, :], device=device, dtype=torch.int64)
-        properties_batch = torch.tensor(properties[i:i+batch_size, :], device=device, dtype=torch.int64)
-        
-        current_accuracies, current_losses = model.forward(messages_batch, properties_batch)
+    for messages, properties in dataloader:
+        messages = messages.long().to(device)
+        properties = properties.long().to(device)
+
+        current_accuracies, current_losses = model.forward(messages, properties)
 
         accuracies = np.vstack((accuracies, current_accuracies))
         losses = np.vstack((losses, current_losses))
 
     return accuracies, losses
+
+def generate_unique_name(length=10, vocab=25, seed=7):
+    result = f'max_len_{length}_vocab_{vocab}_seed_{seed}'
+    return result
 
 def baseline(args):
     args = parse_arguments(args)
@@ -104,14 +111,16 @@ def baseline(args):
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # get data from files
-    train_messages = get_message_file('train')
-    train_indices = get_indices_file('train')
-    train_properties = get_metadata_properties(DatasetType.Train)[train_indices]
-    validation_messages = get_message_file('validation')
-    validation_properties = get_metadata_properties(DatasetType.Valid)
-    # test_messages = get_message_file('test')
-    # test_properties = get_metadata_properties(DatasetType.Test)[:test_messages.shape[0],:]
+    unique_name = generate_unique_name()
+
+    train_dataset = DiagnosticDataset(unique_name, DatasetType.Train)
+    train_dataloader = data.DataLoader(train_dataset, shuffle=True, batch_size=args.batch_size)
+
+    validation_dataset = DiagnosticDataset(unique_name, DatasetType.Valid)
+    validation_dataloader = data.DataLoader(validation_dataset, shuffle=False, batch_size=args.batch_size)
+
+    # test_dataset = DiagnosticDataset(unique_name, DatasetType.Test)
+    # test_dataloader = data.DataLoader(test_dataset, shuffle=False)
 
     model = DiagnosticEnsemble(
         num_classes_by_model=[3, 3, 2, 3, 3],
@@ -129,27 +138,15 @@ def baseline(args):
 
         # TRAIN
         model.train()
-        perform_iteration(model, train_messages, train_properties, args.batch_size, device)
+        perform_iteration(model, train_dataloader, args.batch_size, device)
 
         # VALIDATION
 
         model.eval()
-        accuracies, losses = perform_iteration(model, validation_messages, validation_properties, args.batch_size, device)
+        accuracies, losses = perform_iteration(model, validation_dataloader, args.batch_size, device)
         print_results(accuracies, losses, epoch, "validation")
 
 
-def get_message_file(datatype, length=10, vocab=25, seed=7):
-    path = 'data/messages/'
-    messages_filename = f'max_len_{length}_vocab_{vocab}_seed_{seed}.{datatype}.messages.npy'
-    messages_data = np.load(os.path.join(path, messages_filename))
-    return messages_data
-
-
-def get_indices_file(datatype, length=10, vocab=25, seed=7):
-    path = 'data/messages/'
-    indices_filename = f'max_len_{length}_vocab_{vocab}_seed_{seed}.{datatype}.indices.npy'
-    indices_data = np.load(os.path.join(path, indices_filename))
-    return indices_data
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])

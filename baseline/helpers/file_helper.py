@@ -6,6 +6,7 @@ DATA_FOLDER = 'data'
 CHECKPOINTS_FOLDER = 'checkpoints'
 RUNS_FOLDER = 'runs'
 FEATURES_FOLDER = 'features'
+MESSAGES_FOLDER = 'messages'
 
 class FileHelper:
     def __init__(self):
@@ -37,6 +38,8 @@ class FileHelper:
         self._train_metadata_path = os.path.join(self._data_path, FEATURES_FOLDER, 'train.metadata.p')
         self._valid_metadata_path = os.path.join(self._data_path, FEATURES_FOLDER, 'valid.metadata.p')
         self._test_metadata_path = os.path.join(self._data_path, FEATURES_FOLDER, 'test.metadata.p')
+
+        self._messages_folder_path = os.path.join(self._data_path, MESSAGES_FOLDER)
 
     @property
     def model_checkpoint_path(self):
@@ -77,6 +80,10 @@ class FileHelper:
     @property
     def test_metadata_path(self):
         return self._test_metadata_path
+
+    @property
+    def messages_folder_path(self):
+        return self._messages_folder_path
 
     def get_run_folder(self, sub_folder, model_name):
         if not sub_folder:
