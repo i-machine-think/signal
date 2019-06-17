@@ -32,8 +32,7 @@ class DiagnosticRNN(nn.Module):
 
 	def forward(self, messages):
 		batch_size = messages.shape[0]
-
-		emb = self.embedding(messages)
+		emb = self.embedding(messages.long())
 		# emb = messages
 
 		# emb_concat = emb.view(batch_size, 1, -1)
@@ -55,4 +54,4 @@ class DiagnosticRNN(nn.Module):
 		# lstm_out = lstm_out[:, -1, :]
 
 		fc_out = self.fc.forward(h)
-		return fc_out
+		return fc_out, h

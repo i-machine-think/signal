@@ -27,7 +27,7 @@ class ShapesTrainer(nn.Module):
             self.visual_module = ShapesCNN(sender.hidden_size)
 
         self.device = device
-        
+
         self.inference_step = inference_step
 
     def _pad(self, messages, seq_lengths):

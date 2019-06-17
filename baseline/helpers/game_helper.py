@@ -12,7 +12,7 @@ from models.shapes_sender import ShapesSender
 from models.shapes_trainer import ShapesTrainer
 from models.shapes_single_model import ShapesSingleModel
 from models.shapes_meta_visual_module import ShapesMetaVisualModule
-from diagnostic_rnn import DiagnosticRNN
+from models.diagnostic_rnn import DiagnosticRNN
 
 
 def get_sender_receiver(device, args):
@@ -66,11 +66,12 @@ def get_sender_receiver(device, args):
             genotype=genotype,
             dataset_type=args.dataset_type,
         )
-        
+
     if args.inference_step:
         receiver = DiagnosticRNN(
-            args.max_length, 
+            # args.max_length, 
             3,
+            device,
             args.batch_size
         )
 
