@@ -19,4 +19,5 @@ class UtilsHelper():
             y_hard.scatter_(-1, torch.argmax(y, dim=-1, keepdim=True), 1.0)
             y = (y_hard - y).detach() + y
 
-        return y
+        # return y.long()
+        return torch.argmax(y, dim=-1).long()

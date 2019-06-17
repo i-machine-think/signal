@@ -147,12 +147,8 @@ class ShapesSender(nn.Module):
 
         # Init output
         # if self.training:
-        #     output = [
-        #         torch.zeros(
-        #             (batch_size,), fill_value=self.sos_id, dtype=torch.int64, device=self.device
-        #         )
-        #     ]
-        #     output[0][:, self.sos_id] = 1.0
+        # output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
+        # output[0][:, self.sos_id] = 1.0
         # else:
         output = [
             torch.full(
@@ -182,6 +178,7 @@ class ShapesSender(nn.Module):
             emb = self.embedding.forward(output[-1])
 
             embeds.append(emb)
+
             state = self.rnn.forward(emb, state)
 
             if type(self.rnn) is nn.LSTMCell:
@@ -206,7 +203,6 @@ class ShapesSender(nn.Module):
                 token = token.unsqueeze(0)
 
             output.append(token)
-
             self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
 
         messages = torch.stack(output, dim=1)
