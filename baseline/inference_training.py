@@ -10,6 +10,7 @@ from datasets.diagnostic_dataset import DiagnosticDataset
 from enums.dataset_type import DatasetType
 from helpers.metadata_helper import get_metadata_properties
 from models.diagnostic_ensemble import DiagnosticEnsemble
+from metrics.average_ensemble_meter import AverageEnsembleMeter
 
 def parse_arguments(args):
     # Training settings
@@ -77,29 +78,26 @@ def parse_arguments(args):
 
     return args
 
-def print_results(accuracies, losses, epoch, dataset: str):
-    mean_accuracies = np.mean(accuracies, axis=0)
-    mean_losses = np.mean(losses, axis=0)
+def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageEnsembleMeter, epoch, dataset: str):
+    print(f'epoch: {epoch} | {dataset} | avg: {round(accuracies_meter.avg, 4)} | acc: {round(accuracies_meter.averages[0], 4)} | {round(accuracies_meter.averages[1], 4)} | {round(accuracies_meter.averages[2], 4)} | {round(accuracies_meter.averages[3], 4)} | {round(accuracies_meter.averages[4], 4)}')
+    print(f'epoch: {epoch} | {dataset} | avg: {round(losses_meter.avg, 4)} | loss: {round(losses_meter.averages[0], 4)} | {round(losses_meter.averages[1], 4)} | {round(losses_meter.averages[2], 4)} | {round(losses_meter.averages[3], 4)} | {round(losses_meter.averages[4], 4)}')
 
-    print(f'epoch: {epoch} | {dataset} acc: {round(mean_accuracies[0], 5)} | {round(mean_accuracies[1], 4)} | {round(mean_accuracies[2], 4)} | {round(mean_accuracies[3], 4)} | {round(mean_accuracies[4], 4)}')
-    print(f'epoch: {epoch} | {dataset} loss: {round(mean_losses[0], 4)} | {round(mean_losses[1], 4)} | {round(mean_losses[2], 4)} | {round(mean_losses[3], 4)} | {round(mean_losses[4], 4)}')
-
-def perform_iteration(model, dataloader, batch_size, device):
-    accuracies = np.empty((5,))
-    losses = np.empty((5,))
+def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, device):
+    accuracies_meter = AverageEnsembleMeter(number_of_values=5)
+    losses_meter = AverageEnsembleMeter(number_of_values=5)
     
     for messages, properties in dataloader:
         messages = messages.long().to(device)
         properties = properties.long().to(device)
 
         current_accuracies, current_losses = model.forward(messages, properties)
+        
+        accuracies_meter.update(current_accuracies)
+        losses_meter.update(current_losses, crash=False)
 
-        accuracies = np.vstack((accuracies, current_accuracies))
-        losses = np.vstack((losses, current_losses))
+    return accuracies_meter, losses_meter
 
-    return accuracies, losses
-
-def generate_unique_name(length=10, vocabulary_size=25, seed=7):
+def generate_unique_name(length, vocabulary_size, seed):
     result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
     return result
 
@@ -146,8 +144,8 @@ def baseline(args):
         # VALIDATION
 
         diagnostic_model.eval()
-        validation_accuracies, validation_losses = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
-        print_results(validation_accuracies, validation_losses, epoch, "validation")
+        validation_accuracies_meter, validation_losses_meter = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
+        print_results(validation_accuracies_meter, validation_losses_meter, epoch, "validation")
 
 
 
