@@ -14,15 +14,25 @@ class TrainHelper():
     def __init__(self, device):
         self.device = device
 
-    def train_one_batch(self, model, batch, optimizer):
+    def train_one_batch(self, model, batch, optimizer, meta_data):
         """
         Train for single batch
         """
         model.train()
         optimizer.zero_grad()
 
-        target, distractors, _ = batch
-        loss, acc, _ = model(target, distractors)
+        target, distractors, indices = batch
+
+        # randomly selects class to update onto
+        c = np.random.randint(meta_data.shape[1]) # class_property
+
+        # losses = []
+        # accuracies = []
+        # for c in range(meta_data.shape[1]):
+        md = torch.tensor(meta_data[indices[:,0],c])
+        loss, acc, _ = model(target, distractors, md)
+        # losses.append(loss)
+        # accuracies.append(acc)
 
         loss.backward()
         optimizer.step()
@@ -42,6 +52,7 @@ class TrainHelper():
         # class_loss_meters = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
         #########################################
 
+        c = 0 # for now only checks first class_property
         model.eval()
         for d in data:
             # NOTE, len==3 used to be 2, but due to diagnostic indices it is 3
@@ -50,7 +61,8 @@ class TrainHelper():
                 #########################################
                 ############ DIAGNOSTIC CODE ############
                 #########################################
-                loss, acc, msg = model(target, distractors) #, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
+                vmd = torch.tensor(valid_meta_data[indices[:,0],c]).long()
+                loss, acc, msg = model(target, distractors, vmd) #, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
                 #########################################
 
                 #########################################

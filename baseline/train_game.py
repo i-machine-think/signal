@@ -7,7 +7,7 @@ import sys
 import torch
 import os
 
-from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data
+from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data, get_meta_data
 from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
@@ -164,8 +164,8 @@ def parse_arguments(args):
         help="Additional folder within runs/",
     )
     parser.add_argument("--disable-print",
-                        help="Disable printing", action="store_true")
-                        
+                        help="Disable printing", action="store_true"
+    )                        
     parser.add_argument(
         "--device",
         type=str,
@@ -175,6 +175,12 @@ def parse_arguments(args):
         type=int,
         default=5,
         help="Amount of epochs to check for not improved validation score before early stopping",
+    )
+    parser.add_argument(
+        "--inference-step",
+        type=bool,
+        default=False,
+        help="Use inference step receiver model",
     )
 
     args = parser.parse_args(args)
@@ -211,7 +217,7 @@ def baseline(args):
     torch.save(sender, sender_file)
     torch.save(receiver, receiver_file)
 
-    model = get_trainer(sender, receiver, device, args.dataset_type)
+    model = get_trainer(sender, receiver, device, args.inference_step, args.dataset_type)
 
     if not os.path.exists(file_helper.model_checkpoint_path):
         print('No checkpoint exists. Saving model...\r')
@@ -224,6 +230,8 @@ def baseline(args):
         k=args.k,
         debugging=args.debugging,
         dataset_type=args.dataset_type)
+
+    train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
 
     # dump arguments
     pickle.dump(args, open(f'{run_folder}/experiment_params.p', "wb"))
@@ -257,7 +265,7 @@ def baseline(args):
             print(f'{i}/{args.iterations}       \r', end='')
 
             loss, _ = train_helper.train_one_batch(
-                model, train_batch, optimizer)
+                model, train_batch, optimizer, train_meta_data)
 
             if i % args.log_interval == 0:
 

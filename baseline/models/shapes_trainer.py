@@ -15,6 +15,7 @@ class ShapesTrainer(nn.Module):
             sender: ShapesSender,
             receiver: ShapesReceiver,
             device,
+            inference_step,
             extract_features=False):
         super().__init__()
 
@@ -26,6 +27,8 @@ class ShapesTrainer(nn.Module):
             self.visual_module = ShapesCNN(sender.hidden_size)
 
         self.device = device
+        
+        self.inference_step = inference_step
 
     def _pad(self, messages, seq_lengths):
         """
@@ -50,7 +53,7 @@ class ShapesTrainer(nn.Module):
 
         return messages
 
-    def forward(self, target, distractors):
+    def forward(self, target, distractors, meta_data = None):
         batch_size = target.shape[0]
 
         target = target.to(self.device)
@@ -69,64 +72,87 @@ class ShapesTrainer(nn.Module):
             
         messages = self._pad(messages, lengths)
 
-        r_transform, h_r = self.receiver.forward(messages=messages)
+        if self.inference_step:
+            criterion = nn.CrossEntropyLoss()
+            if len(messages.shape) == 3:
+                r_transform, h_r = self.receiver.forward(messages=messages[:,:,0])
+            else:
+                r_transform, h_r = self.receiver.forward(messages=messages)
+            loss = criterion(r_transform.float(), meta_data)
+            accuracy = (torch.argmax(r_transform, dim=1) == meta_data).float()
+            # if self.training:
+            return torch.mean(loss), torch.mean(accuracy), messages
+            # else:
+            #     return (
+            #     torch.mean(loss),
+            #     torch.mean(accuracy),
+            #     messages,
+            #     h_s,
+            #     h_r,
+            #     entropy,
+            #     sent_p,
+            #     None,
+            #     None,
+            # )
+        else:
+            r_transform, h_r = self.receiver.forward(messages=messages)
 
-        loss = 0
+            loss = 0
 
-        target = target.view(batch_size, 1, -1)
-        r_transform = r_transform.view(batch_size, -1, 1)
+            target = target.view(batch_size, 1, -1)
+            r_transform = r_transform.view(batch_size, -1, 1)
 
-        target_score = torch.bmm(target, r_transform).squeeze()  # scalar
+            target_score = torch.bmm(target, r_transform).squeeze()  # scalar
 
-        all_scores = torch.zeros((batch_size, 1 + len(distractors)))
-        
-        target_index = 0
-        all_scores[:, target_index] = target_score
+            all_scores = torch.zeros((batch_size, 1 + len(distractors)))
+            
+            target_index = 0
+            all_scores[:, target_index] = target_score
 
-        i = 0
-        for d in distractors:
-            if i == target_index:
+            i = 0
+            for d in distractors:
+                if i == target_index:
+                    i += 1
+
+                d = d.view(batch_size, 1, -1)
+                d_score = torch.bmm(d, r_transform).squeeze()
+                all_scores[:, i] = d_score
+                loss += torch.max(
+                    torch.tensor(0.0, device=self.device), 1.0 -
+                    target_score + d_score
+                )
                 i += 1
 
-            d = d.view(batch_size, 1, -1)
-            d_score = torch.bmm(d, r_transform).squeeze()
-            all_scores[:, i] = d_score
-            loss += torch.max(
-                torch.tensor(0.0, device=self.device), 1.0 -
-                target_score + d_score
-            )
-            i += 1
+            # Calculate accuracy
+            all_scores = torch.exp(all_scores)
+            _, max_idx = torch.max(all_scores, 1)
 
-        # Calculate accuracy
-        all_scores = torch.exp(all_scores)
-        _, max_idx = torch.max(all_scores, 1)
+            accuracy = max_idx == target_index
+            accuracy = accuracy.to(dtype=torch.float32)
 
-        accuracy = max_idx == target_index
-        accuracy = accuracy.to(dtype=torch.float32)
+            # if self.training:
+            return torch.mean(loss), torch.mean(accuracy), messages
+            # else:
+            #     #########################################
+            #     ############ DIAGNOSTIC CODE ############
+            #     #########################################
+            #     # losses = []
+            #     # meta_predict_exp = torch.exp(r_transform).squeeze()
+            #     # for m, n in enumerate(range(0, 15, 3)):
+            #     #     _, max_idx_pred = torch.max(meta_predict_exp[:, n:n+3], 1)
+            #     #     _, max_idx_target = torch.max(target.squeeze()[:, n:n+3], 1)
+            #     #     losses.append(
+            #     #         torch.eq(max_idx_target, max_idx_pred).double().mean())
+            #     # #########################################
 
-        # if self.training:
-        return torch.mean(loss), torch.mean(accuracy), messages
-        # else:
-        #     #########################################
-        #     ############ DIAGNOSTIC CODE ############
-        #     #########################################
-        #     # losses = []
-        #     # meta_predict_exp = torch.exp(r_transform).squeeze()
-        #     # for m, n in enumerate(range(0, 15, 3)):
-        #     #     _, max_idx_pred = torch.max(meta_predict_exp[:, n:n+3], 1)
-        #     #     _, max_idx_target = torch.max(target.squeeze()[:, n:n+3], 1)
-        #     #     losses.append(
-        #     #         torch.eq(max_idx_target, max_idx_pred).double().mean())
-        #     # #########################################
-
-        #     return (
-        #         torch.mean(loss),
-        #         torch.mean(accuracy),
-        #         messages,
-        #         h_s,
-        #         h_r,
-        #         entropy,
-        #         sent_p,
-        #         losses,
-        #         max_idx,
-        #     )
+            #     return (
+            #         torch.mean(loss),
+            #         torch.mean(accuracy),
+            #         messages,
+            #         h_s,
+            #         h_r,
+            #         entropy,
+            #         sent_p,
+            #         losses,
+            #         max_idx,
+            #     )

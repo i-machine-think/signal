@@ -12,6 +12,7 @@ from models.shapes_sender import ShapesSender
 from models.shapes_trainer import ShapesTrainer
 from models.shapes_single_model import ShapesSingleModel
 from models.shapes_meta_visual_module import ShapesMetaVisualModule
+from diagnostic_rnn import DiagnosticRNN
 
 
 def get_sender_receiver(device, args):
@@ -65,6 +66,14 @@ def get_sender_receiver(device, args):
             genotype=genotype,
             dataset_type=args.dataset_type,
         )
+        
+    if args.inference_step:
+        receiver = DiagnosticRNN(
+            args.max_length, 
+            3,
+            args.batch_size
+        )
+
 
     if args.sender_path:
         sender = torch.load(args.sender_path)
@@ -100,10 +109,10 @@ def get_sender_receiver(device, args):
     return sender, receiver
 
 
-def get_trainer(sender, receiver, device, dataset_type):
+def get_trainer(sender, receiver, device, inference_step, dataset_type):
     extract_features = dataset_type == "raw"
 
-    return ShapesTrainer(sender, receiver, device, extract_features=extract_features)
+    return ShapesTrainer(sender, receiver, device, inference_step, extract_features=extract_features)
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)
