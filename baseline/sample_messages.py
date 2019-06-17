@@ -152,6 +152,7 @@ def baseline(args):
 
     # get sender and receiver models and save them
     sender = torch.load(args.sender_path, map_location=device)
+    sender.greedy = True
     print(sender)
 
     model = get_trainer(sender, None, device, "raw")
