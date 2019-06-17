@@ -43,7 +43,7 @@ class DiagnosticEnsemble(nn.Module):
 
         for i, model in enumerate(self.models):
             current_targets = targets[:, i]
-            out = model.forward(messages)
+            out, _ = model.forward(messages)
 
             loss = self.criterions[i].forward(out, current_targets)
             

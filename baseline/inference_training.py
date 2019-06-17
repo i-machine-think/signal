@@ -99,8 +99,8 @@ def perform_iteration(model, dataloader, batch_size, device):
 
     return accuracies, losses
 
-def generate_unique_name(length=10, vocab=25, seed=7):
-    result = f'max_len_{length}_vocab_{vocab}_seed_{seed}'
+def generate_unique_name(length=10, vocabulary_size=25, seed=7):
+    result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
     return result
 
 def baseline(args):
@@ -111,7 +111,10 @@ def baseline(args):
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    unique_name = generate_unique_name()
+    unique_name = generate_unique_name(
+        length=args.max_length,
+        vocabulary_size=args.vocab_size,
+        seed=args.seed)
 
     train_dataset = DiagnosticDataset(unique_name, DatasetType.Train)
     train_dataloader = data.DataLoader(train_dataset, shuffle=True, batch_size=args.batch_size)
@@ -122,7 +125,7 @@ def baseline(args):
     # test_dataset = DiagnosticDataset(unique_name, DatasetType.Test)
     # test_dataloader = data.DataLoader(test_dataset, shuffle=False)
 
-    model = DiagnosticEnsemble(
+    diagnostic_model = DiagnosticEnsemble(
         num_classes_by_model=[3, 3, 2, 3, 3],
         batch_size=args.batch_size,
         device=device,
@@ -130,21 +133,21 @@ def baseline(args):
         num_hidden=args.hidden_size,
         learning_rate=args.lr)
 
-    model.to(device)
+    diagnostic_model.to(device)
 
     # Setup the loss and optimizer
 
     for epoch in range(args.max_epochs):
 
         # TRAIN
-        model.train()
-        perform_iteration(model, train_dataloader, args.batch_size, device)
+        diagnostic_model.train()
+        perform_iteration(diagnostic_model, train_dataloader, args.batch_size, device)
 
         # VALIDATION
 
-        model.eval()
-        accuracies, losses = perform_iteration(model, validation_dataloader, args.batch_size, device)
-        print_results(accuracies, losses, epoch, "validation")
+        diagnostic_model.eval()
+        validation_accuracies, validation_losses = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
+        print_results(validation_accuracies, validation_losses, epoch, "validation")
 
 
 
