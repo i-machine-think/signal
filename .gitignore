@@ -104,5 +104,4 @@ venv.bak/
 .mypy_cache/
 /baseline/runs/
 /baseline/data/features/
-/baseline/data/messages/
 /baseline/data/*.pckl
