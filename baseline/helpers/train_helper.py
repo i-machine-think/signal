@@ -20,27 +20,21 @@ class TrainHelper():
         Train for single batch
         """
         model.train()
-        optimizer.zero_grad()
 
         target, distractors, indices = batch
 
-        # randomly selects class to update onto
-        # c = np.random.randint(meta_data.shape[1]) # class_property
-
-        # losses = []
-        # accuracies = []
-        # for c in range(meta_data.shape[1]):
         md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
-        losses, accuracies, _ = model(target, distractors, md)
-        # losses.append(loss)
-        # accuracies.append(acc)
+        loss, accuracies, _ = model.forward(target, distractors, md)
 
-        # loss.backward()
-        # optimizer.step()
+        if not inference_step:
+            optimizer.zero_grad()
+            loss.backward()
+            loss = loss.item()
+            optimizer.step()
 
-        return losses, accuracies
+        return loss, accuracies
 
-    def evaluate(self, model, data, valid_meta_data, device, inference_step, return_softmax=False, ):
+    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step):
         
         if inference_step:
             loss_meter = AverageEnsembleMeter(5)
@@ -48,99 +42,28 @@ class TrainHelper():
         else:
             loss_meter = AverageMeter()
             acc_meter = AverageMeter()
-        
-        entropy_meter = AverageMeter()
 
-        hidden_sender, hidden_receiver = [], []
-        messages, sentence_probabilities = [], []
-
-        #########################################
-        ############ DIAGNOSTIC CODE ############
-        #########################################
-        # class_loss_meters = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
-        #########################################
+        messages = []
 
         model.eval()
-        for d in data:
-            # NOTE, len==3 used to be 2, but due to diagnostic indices it is 3
-        
-            target, distractors, indices = d
-            #########################################
-            ############ DIAGNOSTIC CODE ############
-            #########################################
-            vmd = torch.tensor(valid_meta_data[indices[:,0], :], device=device, dtype=torch.int64)
-            loss, acc, msg = model.forward(target, distractors, vmd) #, h_s, h_r, entropy, sent_p, class_losses, max_idx = model(target, distractors)
-            #########################################
-
-            #########################################
-            ############ DIAGNOSTIC CODE ############
-            #########################################
-            # print('\nValid accuracy', torch.mean(acc).item())
-            # predicted_indices = torch.stack([ind[max_idx[i].item()] for i, ind in enumerate(indices)])
-
-            # pred_metas = valid_meta_data[predicted_indices]
-            # true_metas = valid_meta_data[indices[:,0]]
-
-            # pred_chunks = np.hsplit(pred_metas,5)
-            # true_chunks = np.hsplit(true_metas,5)
-
-            # for i, p in enumerate(PROPERTIES):
-            #     prop_acc = np.sum(pred_chunks[i] == true_chunks[i], axis=1)
-                # print(p, 'accuracy', np.mean(np.where(prop_acc == 3, 1, 0)))
-            #########################################
+        for batch in dataloader:
+            target, distractors, indices = batch
+            
+            vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
+            loss, acc, msg = model.forward(target, distractors, vmd)
+            
+            if not inference_step:
+                loss = loss.item()
 
             loss_meter.update(loss)
             acc_meter.update(acc)
-            # entropy_meter.update(entropy.item())
-
-            #########################################
-            ############ DIAGNOSTIC CODE ############
-            #########################################
-            # for i, c in enumerate(class_loss_meters):
-            #     c.update(class_losses[i].item())
-            #########################################
-
             messages.append(msg)
-            # sentence_probabilities.append(sent_p)
-            # hidden_sender.append(h_s.detach().cpu().numpy())
-            # hidden_receiver.append(h_r.detach().cpu().numpy())
 
-        # hidden_sender = np.concatenate(hidden_sender)
-        # hidden_receiver = np.concatenate(hidden_receiver)
-
-        #########################################
-        ############ DIAGNOSTIC CODE ############
-        #########################################
-        # classes = ['color', 'shape', 'size', 'pos_h', 'pos_w']
-        # print()
-        # for i,c in enumerate(classes):
-        #     print(
-        #         "Class {}: val accuracy: {}".format(
-        #             c,
-        #             class_loss_meters[i].avg,
-        #         )
-        #     )
-        #########################################
-
-        if return_softmax:
-            return (
-                loss_meter,
-                acc_meter,
-                entropy_meter,
-                torch.cat(messages, 0),
-                torch.cat(sentence_probabilities, 0),
-                hidden_sender,
-                hidden_receiver,
-            )
-        else:
-            return (
-                loss_meter,
-                acc_meter,
-                entropy_meter,
-                torch.cat(messages, 0),
-                hidden_sender,
-                hidden_receiver,
-            )
+        return (
+            loss_meter,
+            acc_meter,
+            torch.cat(messages, 0)
+        )
 
     def get_filename_from_baseline_params(self, params):
         """

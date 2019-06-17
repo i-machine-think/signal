@@ -39,15 +39,15 @@ class ShapesTrainer(nn.Module):
 
         mask = torch.arange(max_len, device=self.device).expand(len(seq_lengths), max_len) < seq_lengths.unsqueeze(1)
 
-        # if self.training:
-        #     mask = mask.type(dtype=messages.dtype)
-        #     messages = messages * mask.unsqueeze(2)
+        if self.training:
+            mask = mask.type(dtype=messages.dtype)
+            messages = messages * mask.unsqueeze(2)
 
-        #     # give full probability (1) to eos tag (used as padding in this case)
-        #     messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
-        # else:
+            # give full probability (1) to eos tag (used as padding in this case)
+            messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
+        else:
             # fill in the rest of message with eos
-        messages = messages.masked_fill_(mask == 0, self.sender.eos_id)
+            messages = messages.masked_fill_(mask == 0, self.sender.eos_id)
 
         return messages
 
@@ -67,12 +67,12 @@ class ShapesTrainer(nn.Module):
         if not self.receiver:
             return messages
 
+        messages = self._pad(messages, lengths)
+
         if self.inference_step:
-            messages = messages.long()
             accuracies, losses = self.receiver.forward(messages, meta_data)
             return losses, accuracies, messages
         else:
-            messages = self._pad(messages, lengths)
             r_transform, _ = self.receiver.forward(messages=messages)
 
             loss = 0
@@ -109,7 +109,7 @@ class ShapesTrainer(nn.Module):
             accuracy = accuracy.to(dtype=torch.float32)
 
             # if self.training:
-            return torch.mean(loss).item(), torch.mean(accuracy).item(), messages
+            return torch.mean(loss), torch.mean(accuracy).item(), messages
             # else:
             #     #########################################
             #     ############ DIAGNOSTIC CODE ############

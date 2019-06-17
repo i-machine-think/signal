@@ -35,17 +35,15 @@ class ShapesReceiver(nn.Module):
                 "ShapesReceiver case with cell_type '{}' is undefined".format(cell_type)
             )
 
-        # self.embedding = nn.Parameter(
-        #     torch.empty((vocab_size, embedding_size), dtype=torch.float32)
-        # )
-        self.embedding = nn.Embedding(vocab_size, embedding_size)
-        # norms = torch.norm(self.embedding.weight, p=2, dim=1).data
-        # self.embedding.weight.data = self.embedding.weight.data.div(norms.view(vocab_size,1).expand_as(self.embedding.weight))
+        self.embedding = nn.Parameter(
+            torch.empty((vocab_size, embedding_size), dtype=torch.float32)
+        )
+        # self.embedding = nn.Embedding(vocab_size, embedding_size)
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        # nn.init.normal_(self.embedding, 0.0, 0.1)
+        nn.init.normal_(self.embedding, 0.0, 0.1)
         # self.input_module.reset_parameters()
         if type(self.rnn) is nn.LSTMCell:
             nn.init.xavier_uniform_(self.rnn.weight_ih)
@@ -59,13 +57,13 @@ class ShapesReceiver(nn.Module):
     def forward(self, messages=None):
         batch_size = messages.shape[0]
 
-        # emb = (
-        #     torch.matmul(messages, self.embedding)
-        #     if self.training
-        #     else self.embedding[messages]
-        # )
+        emb = (
+            torch.matmul(messages, self.embedding)
+            if self.training
+            else self.embedding[messages]
+        )
 
-        emb = self.embedding.forward(messages)
+        # emb = self.embedding.forward(messages)
 
         # initialize hidden
         h = torch.zeros([batch_size, self.hidden_size], device=self.device)

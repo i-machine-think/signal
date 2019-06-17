@@ -13,7 +13,7 @@ class DiagnosticEnsemble(nn.Module):
         device,
         vocab_size=25,
         batch_size=1024,
-        embedding_size=32,
+        embedding_size=64,
         num_hidden=64,
         learning_rate=1e-3):
         super(DiagnosticEnsemble, self).__init__()
@@ -41,19 +41,21 @@ class DiagnosticEnsemble(nn.Module):
         accuracies = np.zeros((len(self.models),))
         losses = np.zeros((len(self.models),))
 
-        for i, model in enumerate(self.models):
-            current_targets = targets[:, i]
-            out, _ = model.forward(messages)
+        # for i, model in enumerate(self.models):
+        i = 3
+        model = self.models[i]
+        current_targets = targets[:, i]
+        out, _ = model.forward(messages)
 
-            loss = self.criterions[i].forward(out, current_targets)
-            
-            if self.training:
-                loss.backward()
-                self.optimizers[i].step()
-                self.optimizers[i].zero_grad()
+        loss = self.criterions[i].forward(out, current_targets)
+        
+        if self.training:
+            loss.backward()
+            self.optimizers[i].step()
+            self.optimizers[i].zero_grad()
 
-            losses[i] = loss.item()
-            accuracies[i] = torch.mean((torch.argmax(out, dim=1) == current_targets).float()).item()
+        losses[i] = loss.item()
+        accuracies[i] = torch.mean((torch.argmax(out, dim=1) == current_targets).float()).item()
 
         return accuracies, losses
 
@@ -70,4 +72,10 @@ class DiagnosticEnsemble(nn.Module):
             model.train(mode)
 
 
+    def __str__(self):
+        result = 'DiagnosticEnsemble(\n'
+        for model in self.models:
+            result = f'{result}{model}\n'
 
+        result = f'{result})'
+        return result

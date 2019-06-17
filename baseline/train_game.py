@@ -269,7 +269,7 @@ def baseline(args):
 
             if i % args.log_interval == 0:
 
-                valid_loss_meter, valid_acc_meter, _, _, _, _ = train_helper.evaluate(
+                valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
                     model, valid_data, valid_meta_data, device, args.inference_step)
 
                 if valid_acc_meter.avg < best_accuracy:
