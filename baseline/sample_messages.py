@@ -139,7 +139,6 @@ def sample_messages_from_dataset(model, args, dataset, dataset_type):
     np.save(indices_filepath, np.array(indices))
 
 def baseline(args):
-
     args = parse_arguments(args)
 
     if args.device:
@@ -150,12 +149,17 @@ def baseline(args):
     train_helper = TrainHelper(device)
     train_helper.seed_torch(seed=args.seed)
 
+    file_helper = FileHelper()
+
     # get sender and receiver models and save them
     sender = torch.load(args.sender_path, map_location=device)
     sender.greedy = True
-    print(sender)
-
+    
     model = get_trainer(sender, None, device, inference_step=False, dataset_type="raw")
+    
+    model.visual_module = torch.load(
+        file_helper.model_checkpoint_path,
+        map_location=lambda storage, location: storage)
 
     train_data, validation_data, test_data = get_shapes_dataloader(
         device=device,
