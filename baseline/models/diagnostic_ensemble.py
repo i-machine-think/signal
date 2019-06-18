@@ -3,19 +3,21 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 
+import random
+
 from models.diagnostic_rnn import DiagnosticRNN
 
 
 class DiagnosticEnsemble(nn.Module):
     def __init__(
-        self,
-        num_classes_by_model,
-        device,
-        vocab_size=25,
-        batch_size=1024,
-        embedding_size=64,
-        num_hidden=64,
-        learning_rate=1e-3):
+            self,
+            num_classes_by_model,
+            device,
+            vocab_size=25,
+            batch_size=1024,
+            embedding_size=64,
+            num_hidden=64,
+            learning_rate=1e-3):
         super(DiagnosticEnsemble, self).__init__()
 
         models = []
@@ -39,20 +41,29 @@ class DiagnosticEnsemble(nn.Module):
 
         self.models = nn.ModuleList(models)
 
+    def forward(self, messages, targets, sample_count: int = None):
+        if not sample_count:
+            sample_count = len(self.models)
 
-    def forward(self, messages, targets):
         accuracies = np.zeros((len(self.models),))
         losses = np.zeros((len(self.models),))
 
-        for i, model in enumerate(self.models):
+        indices = [i for i in range(len(self.models))]
+        for _ in range(sample_count):
+            # pick randomly one of the models to forward
+            i = random.choice(indices)
+
+            # remove the picked index so we don't repeat the same model next iteration of the same forward pass
+            indices.remove(i) 
+
             if self.training:
                 self.optimizers[i].zero_grad()
 
             current_targets = targets[:, i]
-            out, _ = model.forward(messages)
+            out, _ = self.models[i].forward(messages)
 
             loss = self.criterions[i].forward(out, current_targets)
-            
+
             if self.training:
                 loss.backward()
                 self.optimizers[i].step()

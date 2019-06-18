@@ -75,6 +75,13 @@ def parse_arguments(args):
         "--device",
         type=str,
         help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+    
+    parser.add_argument(
+        "--training-sample-count",
+        type=int,
+        default=None,
+        help="How many models should be sampled while training. Default is None, meaning that all models will be used")
+    
 
     args = parser.parse_args(args)
 
@@ -84,7 +91,7 @@ def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageE
     print(f'epoch: {epoch} | {dataset} | avg: {round(accuracies_meter.avg, 4)} | acc: {round(accuracies_meter.averages[0], 4)} | {round(accuracies_meter.averages[1], 4)} | {round(accuracies_meter.averages[2], 4)} | {round(accuracies_meter.averages[3], 4)} | {round(accuracies_meter.averages[4], 4)}')
     print(f'epoch: {epoch} | {dataset} | avg: {round(losses_meter.avg, 4)} | loss: {round(losses_meter.averages[0], 4)} | {round(losses_meter.averages[1], 4)} | {round(losses_meter.averages[2], 4)} | {round(losses_meter.averages[3], 4)} | {round(losses_meter.averages[4], 4)}')
 
-def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, device):
+def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, device, sample_count=5):
     accuracies_meter = AverageEnsembleMeter(number_of_values=5)
     losses_meter = AverageEnsembleMeter(number_of_values=5)
     
@@ -92,7 +99,7 @@ def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, de
         messages = messages.long().to(device)
         properties = properties.long().to(device)
 
-        current_accuracies, current_losses = model.forward(messages, properties)
+        current_accuracies, current_losses = model.forward(messages, properties, sample_count)
         
         accuracies_meter.update(current_accuracies)
         losses_meter.update(current_losses, crash=False)
@@ -122,8 +129,8 @@ def baseline(args):
     validation_dataset = DiagnosticDataset(unique_name, DatasetType.Valid)
     validation_dataloader = data.DataLoader(validation_dataset, num_workers=1, pin_memory=True, shuffle=False, batch_size=args.batch_size)
 
-    # test_dataset = DiagnosticDataset(unique_name, DatasetType.Test)
-    # test_dataloader = data.DataLoader(test_dataset, shuffle=False)
+    test_dataset = DiagnosticDataset(unique_name, DatasetType.Test)
+    test_dataloader = data.DataLoader(test_dataset, num_workers=1, pin_memory=True, shuffle=False, batch_size=args.batch_size)
 
     diagnostic_model = DiagnosticEnsemble(
         num_classes_by_model=[3, 3, 2, 3, 3],
@@ -141,13 +148,17 @@ def baseline(args):
 
         # TRAIN
         diagnostic_model.train()
-        perform_iteration(diagnostic_model, train_dataloader, args.batch_size, device)
+        perform_iteration(diagnostic_model, train_dataloader, args.batch_size, device, sample_count=args.training_sample_count)
 
         # VALIDATION
 
         diagnostic_model.eval()
         validation_accuracies_meter, validation_losses_meter = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
         print_results(validation_accuracies_meter, validation_losses_meter, epoch, "validation")
+
+    diagnostic_model.eval()
+    test_accuracies_meter, test_losses_meter = perform_iteration(diagnostic_model, test_dataloader, args.batch_size, device)
+    print_results(test_accuracies_meter, test_losses_meter, epoch, "test")
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])
