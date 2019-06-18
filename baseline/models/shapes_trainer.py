@@ -8,6 +8,7 @@ from .shapes_cnn import ShapesCNN
 from .shapes_receiver import ShapesReceiver
 from .shapes_sender import ShapesSender
 
+import numpy as np
 
 class ShapesTrainer(nn.Module):
     def __init__(
@@ -39,7 +40,7 @@ class ShapesTrainer(nn.Module):
 
         mask = torch.arange(max_len, device=self.device).expand(len(seq_lengths), max_len) < seq_lengths.unsqueeze(1)
 
-        if self.training and not self.inference_step:
+        if self.training:
             mask = mask.type(dtype=messages.dtype)
             messages = messages * mask.unsqueeze(2)
 
@@ -70,8 +71,23 @@ class ShapesTrainer(nn.Module):
             return messages
 
         if self.inference_step:
-            accuracies, losses = self.receiver.forward(messages, meta_data)
-            return losses, accuracies, messages
+            out = self.receiver.forward(messages, meta_data)
+
+            loss = 0
+
+            accuracies = np.zeros((len(out),))
+            losses = np.zeros((len(out),))
+
+            for i, out_property in enumerate(out):
+                current_targets = meta_data[:, i]
+
+                current_loss = nn.functional.cross_entropy(out_property, current_targets)
+
+                loss += current_loss
+                losses[i] = current_loss.item()
+                accuracies[i] = torch.mean((torch.argmax(out_property, dim=1) == current_targets).float()).item()
+
+            return loss, losses, accuracies, messages
         else:
             r_transform, _ = self.receiver.forward(messages=messages)
 
@@ -108,29 +124,4 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index
             accuracy = accuracy.to(dtype=torch.float32)
 
-            # if self.training:
-            return torch.mean(loss), torch.mean(accuracy).item(), messages
-            # else:
-            #     #########################################
-            #     ############ DIAGNOSTIC CODE ############
-            #     #########################################
-            #     # losses = []
-            #     # meta_predict_exp = torch.exp(r_transform).squeeze()
-            #     # for m, n in enumerate(range(0, 15, 3)):
-            #     #     _, max_idx_pred = torch.max(meta_predict_exp[:, n:n+3], 1)
-            #     #     _, max_idx_target = torch.max(target.squeeze()[:, n:n+3], 1)
-            #     #     losses.append(
-            #     #         torch.eq(max_idx_target, max_idx_pred).double().mean())
-            #     # #########################################
-
-            #     return (
-            #         torch.mean(loss),
-            #         torch.mean(accuracy),
-            #         messages,
-            #         h_s,
-            #         h_r,
-            #         entropy,
-            #         sent_p,
-            #         losses,
-            #         max_idx,
-            #     )
+            return torch.mean(loss), loss.item(), torch.mean(accuracy).item(), messages

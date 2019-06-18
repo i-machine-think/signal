@@ -12,7 +12,7 @@ from models.shapes_sender import ShapesSender
 from models.shapes_trainer import ShapesTrainer
 from models.shapes_single_model import ShapesSingleModel
 from models.shapes_meta_visual_module import ShapesMetaVisualModule
-from models.diagnostic_ensemble import DiagnosticEnsemble
+from models.messages_receiver import MessagesReceiver
 
 
 def get_sender_receiver(device, args):
@@ -69,7 +69,7 @@ def get_sender_receiver(device, args):
         )
 
     if args.inference_step:
-        receiver = DiagnosticEnsemble(
+        receiver = MessagesReceiver(
             num_classes_by_model= [3, 3, 2, 3, 3],
             device=device)
 

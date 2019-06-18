@@ -6,7 +6,6 @@ from random import shuffle
 import torch
 
 from .image_helper import get_image
-from .feature_helper import get_features
 from .file_helper import FileHelper
 
 from enums.dataset_type import DatasetType

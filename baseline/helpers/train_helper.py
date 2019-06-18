@@ -5,12 +5,6 @@ import torch
 from metrics.average_meter import AverageMeter
 from metrics.average_ensemble_meter import AverageEnsembleMeter
 
-#########################################
-############ DIAGNOSTIC CODE ############
-#########################################
-PROPERTIES = ['Shape', 'Color', 'Size ', 'Pos_h', 'Pos_w']
-#########################################
-
 class TrainHelper():
     def __init__(self, device):
         self.device = device
@@ -21,18 +15,17 @@ class TrainHelper():
         """
         model.train()
 
+        optimizer.zero_grad()
+
         target, distractors, indices = batch
 
         md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
-        loss, accuracies, _ = model.forward(target, distractors, md)
+        loss, losses, accuracies, _ = model.forward(target, distractors, md)
 
-        if not inference_step:
-            optimizer.zero_grad()
-            loss.backward()
-            loss = loss.item()
-            optimizer.step()
+        loss.backward()
+        optimizer.step()
 
-        return loss, accuracies
+        return losses, accuracies
 
     def evaluate(self, model, dataloader, valid_meta_data, device, inference_step):
         
@@ -50,10 +43,7 @@ class TrainHelper():
             target, distractors, indices = batch
             
             vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
-            loss, acc, msg = model.forward(target, distractors, vmd)
-            
-            if not inference_step:
-                loss = loss.item()
+            _, loss, acc, msg = model.forward(target, distractors, vmd)
 
             loss_meter.update(loss)
             acc_meter.update(acc)
