@@ -18,7 +18,7 @@ class DiagnosticEnsemble(nn.Module):
         learning_rate=1e-3):
         super(DiagnosticEnsemble, self).__init__()
 
-        self.models = []
+        models = []
         self.optimizers = []
         self.criterions = []
 
@@ -32,9 +32,11 @@ class DiagnosticEnsemble(nn.Module):
 
             diagnostic_rnn.to(device)
 
-            self.models.append(diagnostic_rnn)
+            models.append(diagnostic_rnn)
             self.criterions.append(nn.CrossEntropyLoss())
             self.optimizers.append(optim.Adam(diagnostic_rnn.parameters(), lr=learning_rate))
+
+        self.models = nn.ModuleList(models)
 
 
     def forward(self, messages, targets):
@@ -58,24 +60,3 @@ class DiagnosticEnsemble(nn.Module):
         accuracies[i] = torch.mean((torch.argmax(out, dim=1) == current_targets).float()).item()
 
         return accuracies, losses
-
-    def eval(self):
-        super().eval()
-
-        for model in self.models:
-            model.eval()
-
-    def train(self, mode=True):
-        super().train(mode)
-
-        for model in self.models:
-            model.train(mode)
-
-
-    def __str__(self):
-        result = 'DiagnosticEnsemble(\n'
-        for model in self.models:
-            result = f'{result}{model}\n'
-
-        result = f'{result})'
-        return result
