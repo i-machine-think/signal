@@ -116,9 +116,9 @@ def get_dataloaders(
         train_dataset,
         pin_memory=True,
         batch_sampler=BatchSampler(
-            ImagesSampler(train_dataset, k, shuffle=False),
+            ImagesSampler(train_dataset, k, shuffle=True),
             batch_size=batch_size,
-            drop_last=True,
+            drop_last=False,
         ),
     )
 
@@ -128,7 +128,7 @@ def get_dataloaders(
         batch_sampler=BatchSampler(
             ImagesSampler(valid_dataset, k, shuffle=False),
             batch_size=batch_size,
-            drop_last=True,
+            drop_last=False,
         ),
     )
 
@@ -138,7 +138,7 @@ def get_dataloaders(
         batch_sampler=BatchSampler(
             ImagesSampler(test_dataset, k, shuffle=False),
             batch_size=batch_size,
-            drop_last=True,
+            drop_last=False,
         ),
     )
 

@@ -12,6 +12,8 @@ from helpers.metadata_helper import get_metadata_properties
 from models.diagnostic_ensemble import DiagnosticEnsemble
 from metrics.average_ensemble_meter import AverageEnsembleMeter
 
+import matplotlib.pyplot as plt
+
 def parse_arguments(args):
     # Training settings
     parser = argparse.ArgumentParser(
@@ -115,10 +117,10 @@ def baseline(args):
         seed=args.seed)
 
     train_dataset = DiagnosticDataset(unique_name, DatasetType.Train)
-    train_dataloader = data.DataLoader(train_dataset, shuffle=True, batch_size=args.batch_size)
+    train_dataloader = data.DataLoader(train_dataset, num_workers=1, pin_memory=True, shuffle=True, batch_size=args.batch_size)
 
     validation_dataset = DiagnosticDataset(unique_name, DatasetType.Valid)
-    validation_dataloader = data.DataLoader(validation_dataset, shuffle=False, batch_size=args.batch_size)
+    validation_dataloader = data.DataLoader(validation_dataset, num_workers=1, pin_memory=True, shuffle=False, batch_size=args.batch_size)
 
     # test_dataset = DiagnosticDataset(unique_name, DatasetType.Test)
     # test_dataloader = data.DataLoader(test_dataset, shuffle=False)
@@ -146,8 +148,6 @@ def baseline(args):
         diagnostic_model.eval()
         validation_accuracies_meter, validation_losses_meter = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
         print_results(validation_accuracies_meter, validation_losses_meter, epoch, "validation")
-
-
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])

@@ -34,6 +34,7 @@ class DiagnosticEnsemble(nn.Module):
 
             models.append(diagnostic_rnn)
             self.criterions.append(nn.CrossEntropyLoss())
+
             self.optimizers.append(optim.Adam(diagnostic_rnn.parameters(), lr=learning_rate))
 
         self.models = nn.ModuleList(models)
@@ -44,6 +45,9 @@ class DiagnosticEnsemble(nn.Module):
         losses = np.zeros((len(self.models),))
 
         for i, model in enumerate(self.models):
+            if self.training:
+                self.optimizers[i].zero_grad()
+
             current_targets = targets[:, i]
             out, _ = model.forward(messages)
 
@@ -52,7 +56,6 @@ class DiagnosticEnsemble(nn.Module):
             if self.training:
                 loss.backward()
                 self.optimizers[i].step()
-                self.optimizers[i].zero_grad()
 
             losses[i] = loss.item()
             accuracies[i] = torch.mean((torch.argmax(out, dim=1) == current_targets).float()).item()
