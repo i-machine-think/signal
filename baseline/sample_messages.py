@@ -155,7 +155,7 @@ def baseline(args):
     sender.greedy = True
     print(sender)
 
-    model = get_trainer(sender, None, device, "raw")
+    model = get_trainer(sender, None, device, inference_step=False, dataset_type="raw")
 
     train_data, validation_data, test_data = get_shapes_dataloader(
         device=device,

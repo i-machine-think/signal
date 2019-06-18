@@ -56,6 +56,7 @@ def get_sender_receiver(device, args):
             cell_type=cell_type,
             genotype=genotype,
             dataset_type=args.dataset_type,
+            inference_step=args.inference_step
         )
         receiver = ShapesReceiver(
             args.vocab_size,

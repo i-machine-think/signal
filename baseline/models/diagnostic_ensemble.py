@@ -43,20 +43,18 @@ class DiagnosticEnsemble(nn.Module):
         accuracies = np.zeros((len(self.models),))
         losses = np.zeros((len(self.models),))
 
-        # for i, model in enumerate(self.models):
-        i = 3
-        model = self.models[i]
-        current_targets = targets[:, i]
-        out, _ = model.forward(messages)
+        for i, model in enumerate(self.models):
+            current_targets = targets[:, i]
+            out, _ = model.forward(messages)
 
-        loss = self.criterions[i].forward(out, current_targets)
-        
-        if self.training:
-            loss.backward()
-            self.optimizers[i].step()
-            self.optimizers[i].zero_grad()
+            loss = self.criterions[i].forward(out, current_targets)
+            
+            if self.training:
+                loss.backward()
+                self.optimizers[i].step()
+                self.optimizers[i].zero_grad()
 
-        losses[i] = loss.item()
-        accuracies[i] = torch.mean((torch.argmax(out, dim=1) == current_targets).float()).item()
+            losses[i] = loss.item()
+            accuracies[i] = torch.mean((torch.argmax(out, dim=1) == current_targets).float()).item()
 
         return accuracies, losses

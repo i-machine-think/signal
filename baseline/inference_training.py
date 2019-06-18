@@ -25,7 +25,7 @@ def parse_arguments(args):
         help="number of batch epochs to train (default: 1k)",
     )
     parser.add_argument(
-        "--seed", type=int, default=42, metavar="S", help="random seed (default: 42)"
+        "--seed", type=int, default=7, metavar="S", help="random seed (default: 42)"
     )
     parser.add_argument(
         "--embedding-size",

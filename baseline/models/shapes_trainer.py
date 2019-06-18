@@ -39,7 +39,7 @@ class ShapesTrainer(nn.Module):
 
         mask = torch.arange(max_len, device=self.device).expand(len(seq_lengths), max_len) < seq_lengths.unsqueeze(1)
 
-        if self.training:
+        if self.training and not self.inference_step:
             mask = mask.type(dtype=messages.dtype)
             messages = messages * mask.unsqueeze(2)
 
@@ -64,10 +64,10 @@ class ShapesTrainer(nn.Module):
         messages, lengths, _, _, _ = self.sender.forward(
             hidden_state=target)
 
+        messages = self._pad(messages, lengths)
+
         if not self.receiver:
             return messages
-
-        messages = self._pad(messages, lengths)
 
         if self.inference_step:
             accuracies, losses = self.receiver.forward(messages, meta_data)

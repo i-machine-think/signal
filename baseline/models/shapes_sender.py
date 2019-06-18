@@ -22,7 +22,8 @@ class ShapesSender(nn.Module):
         cell_type="lstm",
         genotype=None,
         dataset_type="meta",
-        reset_params=True):
+        reset_params=True,
+        inference_step=False):
 
         super().__init__()
         self.vocab_size = vocab_size
@@ -45,6 +46,7 @@ class ShapesSender(nn.Module):
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.greedy = greedy
+        self.inference_step = inference_step
 
         if cell_type == "lstm":
             self.rnn = nn.LSTMCell(embedding_size, hidden_size)
@@ -126,7 +128,7 @@ class ShapesSender(nn.Module):
                 initial_length (int): The max possible sequence length (output_len + n_sos_symbols).
                 seq_pos (int): The current timestep.
         """
-        if self.training:
+        if self.training and not self.inference_step:
             max_predicted, vocab_index = torch.max(token, dim=1)
             mask = (vocab_index == self.eos_id) * (max_predicted == 1.0)
         else:
@@ -146,7 +148,7 @@ class ShapesSender(nn.Module):
         state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output
-        if self.training:
+        if self.training and not self.inference_step:
             output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
             output[0][:, self.sos_id] = 1.0
         else:
@@ -170,7 +172,7 @@ class ShapesSender(nn.Module):
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
 
         for i in range(self.output_len):
-            if self.training:
+            if self.training and not self.inference_step:
                 emb = torch.matmul(output[-1], self.embedding)
             else:
                 emb = self.embedding[output[-1]]
@@ -189,7 +191,7 @@ class ShapesSender(nn.Module):
             p = F.softmax(self.linear_out(h), dim=1)
             entropy += Categorical(p).entropy()
 
-            if self.training:
+            if self.training and not self.inference_step:
                 token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
             else:
                 sentence_probability += p.detach()
