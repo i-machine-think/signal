@@ -4,6 +4,7 @@ from data.image import Image
 from enums.image_property import ImageProperty
 from string import ascii_lowercase
 
+import os
 import pickle
 
 N_CELLS = 3
@@ -234,6 +235,9 @@ def save_step3_datasets(n, id_symbols, dataset):
         n -= len(target_imgs)
         all_targets.update(target_imgs)
         all_distractors.update(distractor_imgs)
+
+    if not os.path.exists('data/step3'):
+        os.makedirs('data/step3')
 
     print(f'Save {dataset} dataset for target/distractor dictionaries')
     pickle_target = open(f'data/step3/target_dict.{dataset}.p','wb')
