@@ -19,7 +19,11 @@ class TrainHelper():
 
         target, distractors, indices = batch
 
-        md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
+        if inference_step:
+            md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
+        else:
+            md = None
+            
         loss, losses, accuracies, _ = model.forward(target, distractors, md)
 
         loss.backward()
@@ -46,7 +50,7 @@ class TrainHelper():
                 vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
             else:
                 vmd = None
-            
+
             loss1, loss2, acc, msg = model.forward(target, distractors, vmd)
 
             if inference_step:
