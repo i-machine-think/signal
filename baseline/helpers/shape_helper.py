@@ -71,6 +71,5 @@ def generate_shapes_dataset():
         pickle.dump(set_metadata, open(
             file_helper.get_metadata_path(dataset_type), "wb"))
 
-
 if __name__ == "__main__":
     generate_shapes_dataset()

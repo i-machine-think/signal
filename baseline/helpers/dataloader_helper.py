@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pickle
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import BatchSampler
 
@@ -12,6 +13,8 @@ from datasets.shapes_dataset import ShapesDataset
 from samplers.images_sampler import ImagesSampler
 
 from enums.dataset_type import DatasetType
+
+from generate_datasets import generate_step3_dataset
 
 file_helper = FileHelper()
 
@@ -77,6 +80,36 @@ def get_dataloaders(
             mean=train_dataset.mean,
             std=train_dataset.std,
             raw=True)
+
+        step3 = True
+        if step3:
+            train_target_dict = pickle.load(open(file_helper.train_targets_path, 'rb'))
+            train_distractors_dict = pickle.load(open(file_helper.train_distractors_path, 'rb'))
+
+            valid_target_dict = pickle.load(open(file_helper.valid_targets_path, 'rb'))
+            valid_distractors_dict = pickle.load(open(file_helper.valid_distractors_path, 'rb'))
+
+            test_target_dict = pickle.load(open(file_helper.test_targets_path, 'rb'))
+            test_distractors_dict = pickle.load(open(file_helper.test_distractors_path, 'rb'))
+
+            train_dataset = ShapesDataset(
+                train_target_dict, 
+                step3_distractors = train_distractors_dict, 
+                raw=True)
+            
+            valid_dataset = ShapesDataset(
+                valid_target_dict,
+                mean=train_dataset.mean,
+                std=train_dataset.std,
+                step3_distractors = valid_distractors_dict,
+                raw=True)
+
+            test_dataset = ShapesDataset(
+                test_target_dict,
+                mean=train_dataset.mean,
+                std=train_dataset.std,
+                step3_distractors = test_distractors_dict,
+                raw=True)
 
     if dataset_type == "features":
 
@@ -158,7 +191,8 @@ def get_shapes_dataloader(
         k=3,
         debug=False,
         dataset="all",
-        dataset_type="features"):
+        dataset_type="features",
+        step3=False):
     """
     Args:
         batch_size (int, opt): batch size of dataloaders
@@ -167,7 +201,14 @@ def get_shapes_dataloader(
 
     if not os.path.exists(file_helper.train_features_path):
         print("Features files not present - generating dataset")
-        generate_shapes_dataset()
+        if not step3:
+            generate_shapes_dataset()
+        else:
+            # for step 3, generate different pickle file
+            # note that generate_shapes_dataset creates two files
+            # one for img.metadata and one for img.data
+            # generate_property_set creates one, with imgs itself
+            generate_step3_dataset()
 
     return get_dataloaders(
         device,

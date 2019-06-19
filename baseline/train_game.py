@@ -12,8 +12,6 @@ from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
 
-
-
 def parse_arguments(args):
     # Training settings
     parser = argparse.ArgumentParser(
@@ -32,7 +30,7 @@ def parse_arguments(args):
     parser.add_argument(
         "--dataset-type",
         type=str,
-        default="meta",
+        default="raw",
         metavar="S",
         help="type of input used by dataset pick from raw/features/meta (default features)",
     )
@@ -182,12 +180,18 @@ def parse_arguments(args):
         default=False,
         help="Use inference step receiver model",
     )
+    parser.add_argument(
+        "--step3",
+        help="Run with property specific distractors",
+        action="store_true",
+    )
 
     args = parser.parse_args(args)
 
     if args.debugging:
         args.iterations = 1000
         args.max_length = 5
+        args.batch_size = 64
 
     return args
 
@@ -229,7 +233,8 @@ def baseline(args):
         batch_size=args.batch_size,
         k=args.k,
         debugging=args.debugging,
-        dataset_type=args.dataset_type)
+        dataset_type=args.dataset_type,
+        step3=args.step3,)
 
     train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
 

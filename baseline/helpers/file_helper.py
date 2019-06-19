@@ -7,6 +7,7 @@ CHECKPOINTS_FOLDER = 'checkpoints'
 RUNS_FOLDER = 'runs'
 FEATURES_FOLDER = 'features'
 MESSAGES_FOLDER = 'messages'
+STEP3_FOLDER = 'step3'
 
 class FileHelper:
     def __init__(self):
@@ -23,7 +24,6 @@ class FileHelper:
         checkpoints_folder_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER)
         if not os.path.exists(checkpoints_folder_path):
             os.mkdir(checkpoints_folder_path)
-            
 
         self._model_checkpoint_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, 'extractor.p')
 
@@ -40,6 +40,13 @@ class FileHelper:
         self._test_metadata_path = os.path.join(self._data_path, FEATURES_FOLDER, 'test.metadata.p')
 
         self._messages_folder_path = os.path.join(self._data_path, MESSAGES_FOLDER)
+
+        self._train_distractors_path = os.path.join(self._data_path, STEP3_FOLDER, 'distractor_dict.train.p')
+        self._train_targets_path = os.path.join(self._data_path, STEP3_FOLDER, 'target_dict.train.p')
+        self._valid_distractors_path = os.path.join(self._data_path, STEP3_FOLDER, 'distractor_dict.valid.p')
+        self._valid_targets_path = os.path.join(self._data_path, STEP3_FOLDER, 'target_dict.valid.p')
+        self._test_distractors_path = os.path.join(self._data_path, STEP3_FOLDER, 'distractor_dict.test.p')
+        self._test_targets_path = os.path.join(self._data_path, STEP3_FOLDER, 'target_dict.test.p')
 
     @property
     def model_checkpoint_path(self):
@@ -84,6 +91,30 @@ class FileHelper:
     @property
     def messages_folder_path(self):
         return self._messages_folder_path
+
+    @property
+    def train_distractors_path(self):
+        return self._train_distractors_path
+
+    @property
+    def train_targets_path(self):
+        return self._train_targets_path
+
+    @property
+    def valid_distractors_path(self):
+        return self._valid_distractors_path
+
+    @property
+    def valid_targets_path(self):
+        return self._valid_targets_path
+
+    @property
+    def test_distractors_path(self):
+        return self._test_distractors_path
+
+    @property
+    def test_targets_path(self):
+        return self._test_targets_path
 
     def get_run_folder(self, sub_folder, model_name):
         if not sub_folder:

@@ -119,14 +119,15 @@ def get_meta_data():
     return train_meta_data, valid_meta_data, test_meta_data
 
 
-def get_training_data(device, batch_size, k, debugging, dataset_type):
+def get_training_data(device, batch_size, k, debugging, dataset_type, step3):
     # Load data
     train_data, valid_data, test_data = get_shapes_dataloader(
         device=device,
         batch_size=batch_size,
         k=k,
         debug=debugging,
-        dataset_type=dataset_type)
+        dataset_type=dataset_type,
+        step3=step3)
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
     valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)

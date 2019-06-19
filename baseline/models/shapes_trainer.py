@@ -86,7 +86,6 @@ class ShapesTrainer(nn.Module):
                 loss += current_loss
                 losses[i] = current_loss.item()
                 accuracies[i] = torch.mean((torch.argmax(out_property, dim=1) == current_targets).float()).item()
-
             return loss, losses, accuracies, messages
         else:
             r_transform, _ = self.receiver.forward(messages=messages)
@@ -124,4 +123,6 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index
             accuracy = accuracy.to(dtype=torch.float32)
 
-            return torch.mean(loss), loss.item(), torch.mean(accuracy).item(), messages
+            # print(loss)
+            # print(loss.shape)
+            return torch.mean(loss), loss, torch.mean(accuracy).item(), messages

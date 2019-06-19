@@ -42,10 +42,17 @@ class TrainHelper():
         for batch in dataloader:
             target, distractors, indices = batch
             
-            vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
-            _, loss, acc, msg = model.forward(target, distractors, vmd)
+            if inference_step:
+                vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
+            else:
+                vmd = None
+            
+            loss1, loss2, acc, msg = model.forward(target, distractors, vmd)
 
-            loss_meter.update(loss)
+            if inference_step:
+                loss_meter.update(loss2)
+            else:
+                loss_meter.update(loss1)
             acc_meter.update(acc)
             messages.append(msg)
 
