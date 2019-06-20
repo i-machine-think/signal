@@ -6,6 +6,7 @@ import torch.nn as nn
 from .shapes_cnn import ShapesCNN
 
 from .shapes_receiver import ShapesReceiver
+from .messages_receiver import MessagesReceiver
 from .shapes_sender import ShapesSender
 
 import numpy as np
@@ -14,14 +15,18 @@ class ShapesTrainer(nn.Module):
     def __init__(
             self,
             sender: ShapesSender,
-            receiver: ShapesReceiver,
             device,
             inference_step,
+            multi_task,
+            multi_task_lambda,
+            baseline_receiver: ShapesReceiver = None,
+            diagnostic_receiver: MessagesReceiver = None,
             extract_features=False):
         super().__init__()
 
         self.sender = sender
-        self.receiver = receiver
+        self.baseline_receiver = baseline_receiver
+        self.diagnostic_receiver = diagnostic_receiver
 
         self.extract_features = extract_features
         if extract_features:
@@ -30,6 +35,8 @@ class ShapesTrainer(nn.Module):
         self.device = device
 
         self.inference_step = inference_step
+        self.multi_task = multi_task
+        self.multi_task_lambda = multi_task_lambda
 
     def _pad(self, messages, seq_lengths):
         """
@@ -67,16 +74,17 @@ class ShapesTrainer(nn.Module):
 
         messages = self._pad(messages, lengths)
 
-        if not self.receiver:
+        if not self.diagnostic_receiver and not self.baseline_receiver:
             return messages
 
-        if self.inference_step:
-            out = self.receiver.forward(messages, meta_data)
+        final_loss = 0
+        if self.inference_step or self.multi_task:
+            out = self.diagnostic_receiver.forward(messages, meta_data)
 
             loss = 0
 
-            accuracies = np.zeros((len(out),))
-            losses = np.zeros((len(out),))
+            inference_accuracies = np.zeros((len(out),))
+            inference_losses = np.zeros((len(out),))
 
             for i, out_property in enumerate(out):
                 current_targets = meta_data[:, i]
@@ -84,13 +92,18 @@ class ShapesTrainer(nn.Module):
                 current_loss = nn.functional.cross_entropy(out_property, current_targets)
 
                 loss += current_loss
-                losses[i] = current_loss.item()
-                accuracies[i] = torch.mean((torch.argmax(out_property, dim=1) == current_targets).float()).item()
-            return loss, losses, accuracies, messages
-        else:
-            r_transform, _ = self.receiver.forward(messages=messages)
+                inference_losses[i] = current_loss.item()
+                inference_accuracies[i] = torch.mean((torch.argmax(out_property, dim=1) == current_targets).float()).item()
+            
+            if not self.multi_task:
+                return loss, inference_losses, inference_accuracies, messages
+            
+            final_loss = self.multi_task_lambda * loss
+        
+        if not self.inference_step or self.multi_task:
+            r_transform, _ = self.baseline_receiver.forward(messages=messages)
 
-            loss = 0
+            baseline_loss = 0
 
             target = target.view(batch_size, 1, -1)
             r_transform = r_transform.view(batch_size, -1, 1)
@@ -110,7 +123,7 @@ class ShapesTrainer(nn.Module):
                 d = d.view(batch_size, 1, -1)
                 d_score = torch.bmm(d, r_transform).squeeze()
                 all_scores[:, i] = d_score
-                loss += torch.max(
+                baseline_loss += torch.max(
                     torch.tensor(0.0, device=self.device), 1.0 -
                     target_score + d_score
                 )
@@ -123,6 +136,13 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index
             accuracy = accuracy.to(dtype=torch.float32)
 
-            # print(loss)
-            # print(loss.shape)
-            return torch.mean(loss), loss, torch.mean(accuracy).item(), messages
+            baseline_accuracy = torch.mean(accuracy).item()
+            baseline_mean_loss = torch.mean(baseline_loss)
+            baseline_loss = baseline_mean_loss.item()
+
+            if not self.multi_task:
+                return baseline_mean_loss, baseline_loss, baseline_accuracy, messages
+
+            final_loss += (1 - self.multi_task_lambda) * baseline_mean_loss
+
+            return final_loss, (inference_losses, baseline_loss), (inference_accuracies, baseline_accuracy), messages

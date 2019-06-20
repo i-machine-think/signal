@@ -15,9 +15,12 @@ from models.shapes_meta_visual_module import ShapesMetaVisualModule
 from models.messages_receiver import MessagesReceiver
 
 
-def get_sender_receiver(device, args):
+def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, MessagesReceiver):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
+
+    baseline_receiver = None
+    diagnostic_receiver = None
 
     cell_type = "lstm"
     genotype = {}
@@ -33,7 +36,8 @@ def get_sender_receiver(device, args):
             genotype=genotype,
             dataset_type=args.dataset_type,
         )
-        receiver = ShapesSingleModel(
+
+        baseline_receiver = ShapesSingleModel(
             args.vocab_size,
             args.max_length,
             vocab.bound_idx,
@@ -58,25 +62,27 @@ def get_sender_receiver(device, args):
             dataset_type=args.dataset_type,
             inference_step=args.inference_step
         )
-        receiver = ShapesReceiver(
-            args.vocab_size,
-            device,
-            embedding_size=args.embedding_size,
-            hidden_size=args.hidden_size,
-            cell_type=cell_type,
-            genotype=genotype,
-            dataset_type=args.dataset_type,
-        )
 
-    if args.inference_step:
-        receiver = MessagesReceiver(
+        if not args.inference_step or args.multi_task:
+            baseline_receiver = ShapesReceiver(
+                args.vocab_size,
+                device,
+                embedding_size=args.embedding_size,
+                hidden_size=args.hidden_size,
+                cell_type=cell_type,
+                genotype=genotype,
+                dataset_type=args.dataset_type,
+            )
+
+    if args.inference_step or args.multi_task:
+        diagnostic_receiver = MessagesReceiver(
             num_classes_by_model= [3, 3, 2, 3, 3],
             device=device)
 
     if args.sender_path:
         sender = torch.load(args.sender_path)
     if args.receiver_path:
-        receiver = torch.load(args.receiver_path)
+        baseline_receiver = torch.load(args.receiver_path)
 
 
     # This is only used when not training using raw data
@@ -104,13 +110,29 @@ def get_sender_receiver(device, args):
     #     else:
     #         receiver.input_module = r_visual_module
 
-    return sender, receiver
+    return sender, baseline_receiver, diagnostic_receiver
 
 
-def get_trainer(sender, receiver, device, inference_step, dataset_type):
+def get_trainer(
+    sender,
+    device,
+    inference_step,
+    multi_task,
+    multi_task_lambda,
+    dataset_type,
+    baseline_receiver = None,
+    diagnostic_receiver = None):
     extract_features = dataset_type == "raw"
 
-    return ShapesTrainer(sender, receiver, device, inference_step, extract_features=extract_features)
+    return ShapesTrainer(
+        sender,
+        device,
+        inference_step,
+        multi_task,
+        multi_task_lambda,
+        baseline_receiver=baseline_receiver,
+        diagnostic_receiver=diagnostic_receiver,
+        extract_features=extract_features)
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)

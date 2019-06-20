@@ -5,11 +5,21 @@ import torch
 from metrics.average_meter import AverageMeter
 from metrics.average_ensemble_meter import AverageEnsembleMeter
 
+from models.shapes_trainer import ShapesTrainer
+
 class TrainHelper():
     def __init__(self, device):
         self.device = device
 
-    def train_one_batch(self, model, batch, optimizer, meta_data, device, inference_step):
+    def train_one_batch(
+        self,
+        model: ShapesTrainer,
+        batch,
+        optimizer,
+        meta_data,
+        device,
+        inference_step,
+        multi_task):
         """
         Train for single batch
         """
@@ -19,7 +29,7 @@ class TrainHelper():
 
         target, distractors, indices = batch
 
-        if inference_step:
+        if inference_step or multi_task:
             md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
         else:
             md = None
@@ -31,9 +41,12 @@ class TrainHelper():
 
         return losses, accuracies
 
-    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step):
+    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, multi_task):
         
-        if inference_step:
+        if multi_task:
+            loss_meter = [AverageEnsembleMeter(5), AverageMeter()]
+            acc_meter = [AverageEnsembleMeter(5), AverageMeter()]
+        elif inference_step:
             loss_meter = AverageEnsembleMeter(5)
             acc_meter = AverageEnsembleMeter(5)
         else:
@@ -46,18 +59,23 @@ class TrainHelper():
         for batch in dataloader:
             target, distractors, indices = batch
             
-            if inference_step:
+            if inference_step or multi_task:
                 vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
             else:
                 vmd = None
 
-            loss1, loss2, acc, msg = model.forward(target, distractors, vmd)
+            _, loss2, acc, msg = model.forward(target, distractors, vmd)
 
-            if inference_step:
-                loss_meter.update(loss2)
+            if multi_task:
+                loss_meter[0].update(loss2[0])
+                loss_meter[1].update(loss2[1])
+
+                acc_meter[0].update(acc[0])
+                acc_meter[1].update(acc[1])
             else:
-                loss_meter.update(loss1)
-            acc_meter.update(acc)
+                loss_meter.update(loss2)
+                acc_meter.update(acc)
+
             messages.append(msg)
 
         return (
@@ -94,6 +112,10 @@ class TrainHelper():
             name += "_inference"
         if params.step3:
             name += "_step3"
+        if params.multi_task:
+            name += "_multi"
+            if params.multi_task_lambda:
+                name += f'_lambda_{params.multi_task_lambda}'
             
         return name
 

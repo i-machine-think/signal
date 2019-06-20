@@ -176,7 +176,7 @@ def baseline(args):
     sender = torch.load(args.sender_path, map_location=device)
     sender.greedy = True
     
-    model = get_trainer(sender, None, device, inference_step=False, dataset_type="raw")
+    model = get_trainer(sender, device, inference_step=False, dataset_type="raw")
     
     model.visual_module = torch.load(
         args.visual_module_path,

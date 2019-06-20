@@ -177,14 +177,24 @@ def parse_arguments(args):
     )
     parser.add_argument(
         "--inference-step",
-        type=bool,
-        default=False,
+        action="store_true",
         help="Use inference step receiver model",
     )
     parser.add_argument(
         "--step3",
         help="Run with property specific distractors",
         action="store_true",
+    )
+    parser.add_argument(
+        "--multi-task",
+        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--multi-task-lambda",
+        type=float,
+        default=0.5,
+        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
     )
 
     args = parser.parse_args(args)
@@ -215,14 +225,24 @@ def baseline(args):
     metrics_helper = MetricsHelper(run_folder, args.seed)
 
     # get sender and receiver models and save them
-    sender, receiver = get_sender_receiver(device, args)
+    sender, baseline_receiver, diagnostic_receiver = get_sender_receiver(device, args)
     
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
     torch.save(sender, sender_file)
-    torch.save(receiver, receiver_file)
+    
+    if baseline_receiver:
+        torch.save(baseline_receiver, receiver_file)
 
-    model = get_trainer(sender, receiver, device, args.inference_step, args.dataset_type)
+    model = get_trainer(
+        sender,
+        device,
+        args.inference_step,
+        args.multi_task,
+        args.multi_task_lambda,
+        args.dataset_type,
+        baseline_receiver=baseline_receiver,
+        diagnostic_receiver=diagnostic_receiver)
 
     sender_path = file_helper.create_unique_sender_path(model_name)
     visual_module_path = file_helper.create_unique_visual_module_path(model_name)
@@ -256,7 +276,12 @@ def baseline(args):
             )
         )
         print(sender)
-        print(receiver)
+        if baseline_receiver:
+            print(baseline_receiver)
+
+        if diagnostic_receiver:
+            print(diagnostic_receiver)
+
         print("Total number of parameters: {}".format(pytorch_total_params))
 
     model.to(device)
@@ -271,6 +296,11 @@ def baseline(args):
     converged = False
 
     start_time = time.time()
+    if args.multi_task:
+        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Base Acc-Base | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
+        print(header)
+        log_template = ' '.join(
+            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>9.6f} {:>8.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
     if args.inference_step:
         header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
         print(header)
@@ -282,15 +312,21 @@ def baseline(args):
             print(f'{iteration}/{args.iterations}       \r', end='')
 
             _, _ = train_helper.train_one_batch(
-                model, train_batch, optimizer, train_meta_data, device, args.inference_step)
+                model, train_batch, optimizer, train_meta_data, device, args.inference_step, args.multi_task)
 
             if iteration % args.log_interval == 0:
 
                 valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
-                    model, valid_data, valid_meta_data, device, args.inference_step)
+                    model, valid_data, valid_meta_data, device, args.inference_step, args.multi_task)
 
                 new_best = False
-                if valid_acc_meter.avg < best_accuracy:
+                
+                if args.multi_task:
+                    average_valid_accuracy = args.multi_task_lambda * valid_acc_meter[0].avg + (1 - args.multi_task_lambda) * valid_acc_meter[1].avg
+                else:
+                    average_valid_accuracy = valid_acc_meter.avg
+
+                if average_valid_accuracy < best_accuracy:
                     current_patience -= 1
 
                     if current_patience <= 0:
@@ -299,7 +335,7 @@ def baseline(args):
                         break
                 else:
                     new_best = True
-                    best_accuracy = valid_acc_meter.avg
+                    best_accuracy = average_valid_accuracy
                     current_patience = args.patience
                     torch.save(model.sender, sender_path)
                     torch.save(model.visual_module, visual_module_path)
@@ -319,7 +355,31 @@ def baseline(args):
 
                 # Skip for now
                 if not args.disable_print:
-                    if args.inference_step:
+                    if args.multi_task:
+                        print(log_template.format(
+                            time.time()-start_time,
+                            epoch,
+                            iteration,
+                            1 + iteration,
+                            args.iterations,
+                            100. * (1+iteration) / args.iterations,
+                            valid_loss_meter[0].avg,
+                            valid_acc_meter[0].avg,
+                            valid_loss_meter[1].avg,
+                            valid_acc_meter[1].avg,
+                            valid_loss_meter[0].averages[0],
+                            valid_loss_meter[0].averages[1],
+                            valid_loss_meter[0].averages[2],
+                            valid_loss_meter[0].averages[3],
+                            valid_loss_meter[0].averages[4],
+                            valid_acc_meter[0].averages[0],
+                            valid_acc_meter[0].averages[1],
+                            valid_acc_meter[0].averages[2],
+                            valid_acc_meter[0].averages[3],
+                            valid_acc_meter[0].averages[4],
+                            "BEST" if new_best else ""
+                        ))
+                    elif args.inference_step:
                         print(log_template.format(
                             time.time()-start_time,
                             epoch,
