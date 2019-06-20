@@ -90,8 +90,11 @@ class TrainHelper():
             name += "_debug"
         if params.sender_path or params.receiver_path:
             name += "_loaded_from_path"
-        if params.obverter_setup:
-            name = "obverter_setup_with_" + name
+        if params.inference_step:
+            name += "_inference"
+        if params.step3:
+            name += "_step3"
+            
         return name
 
     def seed_torch(self, seed=42):

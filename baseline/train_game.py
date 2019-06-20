@@ -171,7 +171,7 @@ def parse_arguments(args):
     parser.add_argument(
         "--patience",
         type=int,
-        default=5,
+        default=10,
         help="Amount of epochs to check for not improved validation score before early stopping",
     )
     parser.add_argument(
@@ -215,13 +215,16 @@ def baseline(args):
 
     # get sender and receiver models and save them
     sender, receiver = get_sender_receiver(device, args)
-
+    
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
     torch.save(sender, sender_file)
     torch.save(receiver, receiver_file)
 
     model = get_trainer(sender, receiver, device, args.inference_step, args.dataset_type)
+
+    sender_path = file_helper.create_unique_sender_path(model_name)
+    visual_module_path = file_helper.create_unique_visual_module_path(model_name)
 
     if not os.path.exists(file_helper.model_checkpoint_path):
         print('No checkpoint exists. Saving model...\r')
@@ -287,7 +290,8 @@ def baseline(args):
                 else:
                     best_accuracy = valid_acc_meter.avg
                     current_patience = args.patience
-                    torch.save(model.sender, file_helper.create_unique_sender_path(model_name))
+                    torch.save(model.sender, sender_path)
+                    torch.save(model.visual_module, visual_module_path)
 
                 # metrics_helper.log_metrics(
                 #     model,

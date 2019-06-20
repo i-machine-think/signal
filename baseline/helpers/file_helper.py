@@ -167,3 +167,7 @@ class FileHelper:
     def create_unique_sender_path(self, model_name: str):
         sender_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, f'sender_{model_name}.p')
         return sender_path
+
+    def create_unique_visual_module_path(self, model_name: str):
+        visual_module_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, f'visual_module_{model_name}.p')
+        return visual_module_path
