@@ -9,7 +9,6 @@ import numpy as np
 from helpers.game_helper import get_sender_receiver, get_trainer
 from helpers.dataloader_helper import get_shapes_dataloader
 from helpers.train_helper import TrainHelper
-from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
 
 
@@ -27,6 +26,13 @@ def parse_arguments(args):
         required=True,
         metavar="S",
         help="Sender to be loaded",
+    )
+    parser.add_argument(
+        "--visual-module-path",
+        type=str,
+        required=True,
+        metavar="S",
+        help="Visual module to be loaded",
     )
     parser.add_argument(
         "--output-path",
@@ -87,32 +93,43 @@ def parse_arguments(args):
         help="type of input used by dataset pick from raw/features/meta (default features)",
     )
     parser.add_argument(
-        "--receiver-path",
-        type=str,
-        default=False,
-        metavar="S",
-        help="Receiver to be loaded",
+        "--inference",
+        action="store_true",
+        help="If sender model trained using inference step is used"
+    )
+    parser.add_argument(
+        "--step3",
+        help="If sender model trained using step3 is used",
+        action="store_true"
     )
 
     args = parser.parse_args(args)
     return args
 
-def generate_unique_filename(max_length, vocab_size, seed, set_type):
-    name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}.{set_type}'
+def generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type):
+    name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}'
+    if inference:
+        name += '_inference'
+    
+    if step3:
+        name += '_step3'
+
+    name += f'.{set_type}'
+
     return name
 
-def generate_messages_filename(max_length, vocab_size, seed, set_type):
+def generate_messages_filename(max_length, vocab_size, seed, inference, step3, set_type):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, set_type)}.messages.npy'
+    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type)}.messages.npy'
     return name
 
-def generate_indices_filename(max_length, vocab_size, seed, set_type):
+def generate_indices_filename(max_length, vocab_size, seed, inference, step3, set_type):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, set_type)}.indices.npy'
+    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type)}.indices.npy'
     return name
 
 def sample_messages_from_dataset(model, args, dataset, dataset_type):
@@ -128,18 +145,24 @@ def sample_messages_from_dataset(model, args, dataset, dataset_type):
         current_messages = model(target, distractors)
         messages.extend(current_messages.cpu().tolist())
 
-    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, dataset_type)
+    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type)
     messages_filepath = os.path.join(args.output_path,  messages_filename)
     np.save(messages_filepath, np.array(messages))
 
     # Added lines to save properties as np.save as well
     # Separate file is made, similar to generate_messages_filename
-    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, dataset_type)
+    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type)
     indices_filepath = os.path.join(args.output_path, indices_filename)
     np.save(indices_filepath, np.array(indices))
 
 def baseline(args):
     args = parse_arguments(args)
+
+    if not os.path.isfile(args.sender_path):
+        raise Exception('Sender path is invalid')
+        
+    if not os.path.isfile(args.visual_module_path):
+        raise Exception('Visual module path is invalid')
 
     if args.device:
         device = torch.device(args.device)
@@ -149,8 +172,6 @@ def baseline(args):
     train_helper = TrainHelper(device)
     train_helper.seed_torch(seed=args.seed)
 
-    file_helper = FileHelper()
-
     # get sender and receiver models and save them
     sender = torch.load(args.sender_path, map_location=device)
     sender.greedy = True
@@ -158,7 +179,7 @@ def baseline(args):
     model = get_trainer(sender, None, device, inference_step=False, dataset_type="raw")
     
     model.visual_module = torch.load(
-        file_helper.model_checkpoint_path,
+        args.visual_module_path,
         map_location=lambda storage, location: storage)
 
     train_data, validation_data, test_data = get_shapes_dataloader(
