@@ -6,6 +6,7 @@ import argparse
 import sys
 import torch
 import os
+import time
 
 from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data, get_meta_data
 from helpers.train_helper import TrainHelper
@@ -263,23 +264,32 @@ def baseline(args):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     # Train
-    i = 0
+    epoch = 0
+    iteration = 0
     current_patience = args.patience
     best_accuracy = -1.
     converged = False
 
-    while i < args.iterations:
+    start_time = time.time()
+    if args.inference_step:
+        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
+        print(header)
+        log_template = ' '.join(
+            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
+
+    while iteration < args.iterations:
         for train_batch in train_data:
-            print(f'{i}/{args.iterations}       \r', end='')
+            print(f'{iteration}/{args.iterations}       \r', end='')
 
             _, _ = train_helper.train_one_batch(
                 model, train_batch, optimizer, train_meta_data, device, args.inference_step)
 
-            if i % args.log_interval == 0:
+            if iteration % args.log_interval == 0:
 
                 valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
                     model, valid_data, valid_meta_data, device, args.inference_step)
 
+                new_best = False
                 if valid_acc_meter.avg < best_accuracy:
                     current_patience -= 1
 
@@ -288,6 +298,7 @@ def baseline(args):
                         converged = True
                         break
                 else:
+                    new_best = True
                     best_accuracy = valid_acc_meter.avg
                     current_patience = args.patience
                     torch.save(model.sender, sender_path)
@@ -309,19 +320,40 @@ def baseline(args):
                 # Skip for now
                 if not args.disable_print:
                     if args.inference_step:
-                        print(f'{i}/{args.iterations} ACC: | avg: {round(valid_acc_meter.avg, 4)} | {round(valid_acc_meter.averages[0], 4)} | {round(valid_acc_meter.averages[1], 4)} | {round(valid_acc_meter.averages[2], 4)} | {round(valid_acc_meter.averages[3], 4)} | {round(valid_acc_meter.averages[4], 4)}')
-                        print(f'{i}/{args.iterations} LOSS: | avg: {round(valid_loss_meter.avg, 4)} | {round(valid_loss_meter.averages[0], 4)} | {round(valid_loss_meter.averages[1], 4)} | {round(valid_loss_meter.averages[2], 4)} | {round(valid_loss_meter.averages[3], 4)} | {round(valid_loss_meter.averages[4], 4)}')
+                        print(log_template.format(
+                            time.time()-start_time,
+                            epoch,
+                            iteration,
+                            1 + iteration,
+                            args.iterations,
+                            100. * (1+iteration) / args.iterations,
+                            valid_loss_meter.avg,
+                            valid_acc_meter.avg,
+                            valid_loss_meter.averages[0],
+                            valid_loss_meter.averages[1],
+                            valid_loss_meter.averages[2],
+                            valid_loss_meter.averages[3],
+                            valid_loss_meter.averages[4],
+                            valid_acc_meter.averages[0],
+                            valid_acc_meter.averages[1],
+                            valid_acc_meter.averages[2],
+                            valid_acc_meter.averages[3],
+                            valid_acc_meter.averages[4],
+                            "BEST" if new_best else ""
+                        ))
                     else:
                         print(
                             "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
-                                i,
+                                iteration,
                                 args.iterations,
                                 valid_loss_meter.avg,
                                 valid_acc_meter.avg,
                             )
                         )
 
-            i += 1
+            iteration += 1
+        
+        epoch += 1
         
         if converged:
             break
