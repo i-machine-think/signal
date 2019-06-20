@@ -10,14 +10,15 @@ from torch.utils import data
 from datasets.diagnostic_dataset import DiagnosticDataset
 from enums.dataset_type import DatasetType
 from helpers.metadata_helper import get_metadata_properties
+from helpers.train_helper import TrainHelper
 from models.diagnostic_ensemble import DiagnosticEnsemble
 from metrics.average_ensemble_meter import AverageEnsembleMeter
 
 import matplotlib.pyplot as plt
 
-header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW |    Dataset'
+header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW |    Dataset | Best'
 log_template = ' '.join(
-    '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>10s}'.split(','))
+    '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>10s} | {:>4s}'.split(','))
 
 start_time = time.time()
 
@@ -34,7 +35,17 @@ def parse_arguments(args):
         help="number of batch epochs to train (default: 1k)",
     )
     parser.add_argument(
-        "--seed", type=int, default=7, metavar="S", help="random seed (default: 42)"
+        "--messages-seed",
+        type=int,
+        required=True,
+        metavar="S",
+        help="The seed which was used for sampling messages"
+    )
+    parser.add_argument(
+        "--training-seed",
+        type=int,
+        default=13,
+        help="The seed that will be used to initialize the current model (default: 13)"
     )
     parser.add_argument(
         "--embedding-size",
@@ -103,7 +114,7 @@ def parse_arguments(args):
 
     return args
 
-def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageEnsembleMeter, epoch, max_epochs, dataset: str):
+def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageEnsembleMeter, epoch, max_epochs, dataset: str, new_best:bool):
     print(log_template.format(
         time.time()-start_time,
         epoch,
@@ -123,7 +134,8 @@ def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageE
         accuracies_meter.averages[2],
         accuracies_meter.averages[3],
         accuracies_meter.averages[4],
-        dataset
+        dataset,
+        "BEST" if new_best else ""
     ))
 
 def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, device, sample_count=5):
@@ -151,6 +163,50 @@ def generate_unique_name(length, vocabulary_size, seed, inference, step3):
 
     return result
 
+def generate_model_name(length, vocabulary_size, messages_seed, training_seed, inference, step3):
+    result = f'max_len_{length}_vocab_{vocabulary_size}_msg_seed_{messages_seed}_train_seed_{training_seed}'
+    if inference:
+        result += '_inference'
+    
+    if step3:
+        result += '_step3'
+
+    result += '.p'
+
+    return result
+
+def save_model(path, model):
+    torch_state = {'model_state_dict': model.state_dict(),
+                   'optimizer0_state_dict': model.optimizers[0].state_dict(),
+                   'optimizer1_state_dict': model.optimizers[1].state_dict(),
+                   'optimizer2_state_dict': model.optimizers[2].state_dict(),
+                   'optimizer3_state_dict': model.optimizers[3].state_dict(),
+                   'optimizer4_state_dict': model.optimizers[4].state_dict()}
+
+    torch.save(torch_state, path)
+
+def load_model(path, model):
+    checkpoint = torch.load(path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    
+    for i, optimizer in enumerate(model.optimizers):
+        if checkpoint[f'optimizer{i}_state_dict']:
+            optimizer.load_state_dict(checkpoint[f'optimizer{i}_state_dict'])
+
+def initialize_model(args, device, checkpoint_path: str = None):
+    diagnostic_model = DiagnosticEnsemble(
+        num_classes_by_model=[3, 3, 2, 3, 3],
+        batch_size=args.batch_size,
+        device=device,
+        embedding_size=args.embedding_size,
+        num_hidden=args.hidden_size,
+        learning_rate=args.lr)
+
+    if checkpoint_path:
+        load_model(checkpoint_path, diagnostic_model)
+
+    return diagnostic_model
+
 def baseline(args):
     args = parse_arguments(args)
 
@@ -159,12 +215,29 @@ def baseline(args):
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    inference_path = os.path.join('data', 'inference')
+    if not os.path.exists(inference_path):
+        os.mkdir(inference_path)
+
     unique_name = generate_unique_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
-        seed=args.seed,
+        seed=args.messages_seed,
         inference=args.inference,
         step3=args.step3)
+
+    model_name = generate_model_name(
+        length=args.max_length,
+        vocabulary_size=args.vocab_size,
+        messages_seed=args.messages_seed,
+        training_seed=args.training_seed,
+        inference=args.inference,
+        step3=args.step3)
+
+    model_path = os.path.join(inference_path, model_name)
+
+    train_helper = TrainHelper(device)
+    train_helper.seed_torch(args.training_seed)
 
     train_dataset = DiagnosticDataset(unique_name, DatasetType.Train)
     train_dataloader = data.DataLoader(train_dataset, num_workers=1, pin_memory=True, shuffle=True, batch_size=args.batch_size)
@@ -175,20 +248,16 @@ def baseline(args):
     test_dataset = DiagnosticDataset(unique_name, DatasetType.Test)
     test_dataloader = data.DataLoader(test_dataset, num_workers=1, pin_memory=True, shuffle=False, batch_size=args.batch_size)
 
-    diagnostic_model = DiagnosticEnsemble(
-        num_classes_by_model=[3, 3, 2, 3, 3],
-        batch_size=args.batch_size,
-        device=device,
-        embedding_size=args.embedding_size,
-        num_hidden=args.hidden_size,
-        learning_rate=args.lr)
+    diagnostic_model = initialize_model(args, device)
 
     diagnostic_model.to(device)
 
     # Setup the loss and optimizer
 
     print(header)
-
+    
+    best_accuracy = -1.
+    
     for epoch in range(args.max_epochs):
 
         # TRAIN
@@ -199,11 +268,20 @@ def baseline(args):
 
         diagnostic_model.eval()
         validation_accuracies_meter, validation_losses_meter = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
-        print_results(validation_accuracies_meter, validation_losses_meter, epoch, args.max_epochs, "validation")
 
-    diagnostic_model.eval()
-    test_accuracies_meter, test_losses_meter = perform_iteration(diagnostic_model, test_dataloader, args.batch_size, device)
-    print_results(test_accuracies_meter, test_losses_meter, epoch, args.max_epochs, "test")
+        new_best = False
+        if validation_accuracies_meter.avg > best_accuracy:
+            new_best = True
+            best_accuracy = validation_accuracies_meter.avg
+            save_model(model_path, diagnostic_model)
+
+        print_results(validation_accuracies_meter, validation_losses_meter, epoch, args.max_epochs, "validation", new_best)
+
+    best_model = initialize_model(args, device, model_path)
+    best_model.eval()
+    
+    test_accuracies_meter, test_losses_meter = perform_iteration(best_model, test_dataloader, args.batch_size, device)
+    print_results(test_accuracies_meter, test_losses_meter, epoch, args.max_epochs, "test", False)
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])
