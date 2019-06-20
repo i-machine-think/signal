@@ -3,6 +3,7 @@ import sys
 import torch
 import os
 import numpy as np
+import time
 
 from torch.utils import data
 
@@ -13,6 +14,12 @@ from models.diagnostic_ensemble import DiagnosticEnsemble
 from metrics.average_ensemble_meter import AverageEnsembleMeter
 
 import matplotlib.pyplot as plt
+
+header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW |    Dataset'
+log_template = ' '.join(
+    '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>10s}'.split(','))
+
+start_time = time.time()
 
 def parse_arguments(args):
     # Training settings
@@ -81,15 +88,43 @@ def parse_arguments(args):
         type=int,
         default=None,
         help="How many models should be sampled while training. Default is None, meaning that all models will be used")
-    
+    parser.add_argument(
+        "--inference",
+        action="store_true",
+        help="If sender model trained using inference step is used"
+    )
+    parser.add_argument(
+        "--step3",
+        help="If sender model trained using step3 is used",
+        action="store_true"
+    )
 
     args = parser.parse_args(args)
 
     return args
 
-def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageEnsembleMeter, epoch, dataset: str):
-    print(f'epoch: {epoch} | {dataset} | avg: {round(accuracies_meter.avg, 4)} | acc: {round(accuracies_meter.averages[0], 4)} | {round(accuracies_meter.averages[1], 4)} | {round(accuracies_meter.averages[2], 4)} | {round(accuracies_meter.averages[3], 4)} | {round(accuracies_meter.averages[4], 4)}')
-    print(f'epoch: {epoch} | {dataset} | avg: {round(losses_meter.avg, 4)} | loss: {round(losses_meter.averages[0], 4)} | {round(losses_meter.averages[1], 4)} | {round(losses_meter.averages[2], 4)} | {round(losses_meter.averages[3], 4)} | {round(losses_meter.averages[4], 4)}')
+def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageEnsembleMeter, epoch, max_epochs, dataset: str):
+    print(log_template.format(
+        time.time()-start_time,
+        epoch,
+        epoch,
+        1 + epoch,
+        max_epochs,
+        100. * (1+epoch) / max_epochs,
+        losses_meter.avg,
+        accuracies_meter.avg,
+        losses_meter.averages[0],
+        losses_meter.averages[1],
+        losses_meter.averages[2],
+        losses_meter.averages[3],
+        losses_meter.averages[4],
+        accuracies_meter.averages[0],
+        accuracies_meter.averages[1],
+        accuracies_meter.averages[2],
+        accuracies_meter.averages[3],
+        accuracies_meter.averages[4],
+        dataset
+    ))
 
 def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, device, sample_count=5):
     accuracies_meter = AverageEnsembleMeter(number_of_values=5)
@@ -106,8 +141,14 @@ def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, de
 
     return accuracies_meter, losses_meter
 
-def generate_unique_name(length, vocabulary_size, seed):
+def generate_unique_name(length, vocabulary_size, seed, inference, step3):
     result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
+    if inference:
+        result += '_inference'
+    
+    if step3:
+        result += '_step3'
+
     return result
 
 def baseline(args):
@@ -121,7 +162,9 @@ def baseline(args):
     unique_name = generate_unique_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
-        seed=args.seed)
+        seed=args.seed,
+        inference=args.inference,
+        step3=args.step3)
 
     train_dataset = DiagnosticDataset(unique_name, DatasetType.Train)
     train_dataloader = data.DataLoader(train_dataset, num_workers=1, pin_memory=True, shuffle=True, batch_size=args.batch_size)
@@ -144,6 +187,8 @@ def baseline(args):
 
     # Setup the loss and optimizer
 
+    print(header)
+
     for epoch in range(args.max_epochs):
 
         # TRAIN
@@ -154,11 +199,11 @@ def baseline(args):
 
         diagnostic_model.eval()
         validation_accuracies_meter, validation_losses_meter = perform_iteration(diagnostic_model, validation_dataloader, args.batch_size, device)
-        print_results(validation_accuracies_meter, validation_losses_meter, epoch, "validation")
+        print_results(validation_accuracies_meter, validation_losses_meter, epoch, args.max_epochs, "validation")
 
     diagnostic_model.eval()
     test_accuracies_meter, test_losses_meter = perform_iteration(diagnostic_model, test_dataloader, args.batch_size, device)
-    print_results(test_accuracies_meter, test_losses_meter, epoch, "test")
+    print_results(test_accuracies_meter, test_losses_meter, epoch, args.max_epochs, "test")
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])
