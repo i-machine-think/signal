@@ -123,6 +123,9 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index
             accuracy = accuracy.to(dtype=torch.float32)
 
-            # print(loss)
+            # print(all_scores)
+            # print(len(distractors))
             # print(loss.shape)
-            return torch.mean(loss), loss, torch.mean(accuracy).item(), messages
+            # return torch.mean(loss), loss, torch.mean(accuracy).item(), messages
+            # print(accuracy)
+            return torch.mean(loss), loss, accuracy, messages

@@ -265,7 +265,7 @@ def generate_property_set(id_symbol):
                             target_image, current_images = generate_image(seed, horizontal_position, vertical_position, shape, color, size, image_property)
                             all_images[f'{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}'] = current_images
                             target_images[f'{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}'] = target_image
-    
+
     return target_images, all_images
 
     # pickle_target = open(f'data/target_dict_{str(len(target_images))}.p','wb')
@@ -281,7 +281,7 @@ def generate_property_set(id_symbol):
 
 
 if __name__ == "__main__":
-    all_images = generate_property_set()
+    # all_images = generate_property_set()
 
     pickle_target = open(f'data/target_dict_{str(len(all_images))}.p', 'rb')
     target_dict = pickle.load(pickle_target)

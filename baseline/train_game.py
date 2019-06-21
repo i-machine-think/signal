@@ -192,7 +192,7 @@ def parse_arguments(args):
     if args.debugging:
         args.iterations = 1000
         args.max_length = 5
-        args.batch_size = 64
+        args.batch_size = 16#64
 
     return args
 
@@ -276,6 +276,14 @@ def baseline(args):
         print(header)
         log_template = ' '.join(
             '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
+    if args.step3:
+        # The data is saved according to the following sequence [hp,vp,sh,co,si]
+        # Thus it should be checked still, with the order in the print statements        
+        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-PosH Loss-PosW Loss-Color Loss-Shape Loss-Size | Acc-PosH Acc-PosW Acc-Color Acc-Shape Acc-Size | Best'
+        print(header)
+        log_template = ' '.join(
+            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
+
 
     while iteration < args.iterations:
         for train_batch in train_data:
@@ -287,7 +295,7 @@ def baseline(args):
             if iteration % args.log_interval == 0:
 
                 valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
-                    model, valid_data, valid_meta_data, device, args.inference_step)
+                    model, valid_data, valid_meta_data, device, args.inference_step, step3 = args.step3)
 
                 new_best = False
                 if valid_acc_meter.avg < best_accuracy:
@@ -316,10 +324,11 @@ def baseline(args):
                 #     hidden_receiver,
                 #     loss,
                 #     i)
-
+                # print(valid_acc_meter.averages)
+                # print(valid_loss_meter.averages)
                 # Skip for now
                 if not args.disable_print:
-                    if args.inference_step:
+                    if args.inference_step or args.step3:
                         print(log_template.format(
                             time.time()-start_time,
                             epoch,

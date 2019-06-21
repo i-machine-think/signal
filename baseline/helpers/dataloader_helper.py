@@ -47,7 +47,8 @@ def get_dataloaders(
     k=3,
     debug=False,
     dataset="all",
-    dataset_type="features"
+    dataset_type="features",
+    step3=False
 ):
     """
     Returns dataloader for the train/valid/test datasets
@@ -62,27 +63,27 @@ def get_dataloaders(
                                       default: "features"
     """
     if dataset_type == "raw":
-        train_features = np.load(file_helper.train_input_path)
-        valid_features = np.load(file_helper.valid_input_path)
-        test_features = np.load(file_helper.test_input_path)
+        if not step3:
+            train_features = np.load(file_helper.train_input_path)
+            valid_features = np.load(file_helper.valid_input_path)
+            test_features = np.load(file_helper.test_input_path)
 
-        train_dataset = ShapesDataset(train_features, raw=True)
+            train_dataset = ShapesDataset(train_features, raw=True)
 
-        # All features are normalized with train mean and std
-        valid_dataset = ShapesDataset(
-            valid_features,
-            mean=train_dataset.mean,
-            std=train_dataset.std,
-            raw=True)
+            # All features are normalized with train mean and std
+            valid_dataset = ShapesDataset(
+                valid_features,
+                mean=train_dataset.mean,
+                std=train_dataset.std,
+                raw=True)
 
-        test_dataset = ShapesDataset(
-            test_features,
-            mean=train_dataset.mean,
-            std=train_dataset.std,
-            raw=True)
+            test_dataset = ShapesDataset(
+                test_features,
+                mean=train_dataset.mean,
+                std=train_dataset.std,
+                raw=True)
 
-        step3 = True
-        if step3:
+        else:
             train_target_dict = pickle.load(open(file_helper.train_targets_path, 'rb'))
             train_distractors_dict = pickle.load(open(file_helper.train_distractors_path, 'rb'))
 
@@ -91,6 +92,9 @@ def get_dataloaders(
 
             test_target_dict = pickle.load(open(file_helper.test_targets_path, 'rb'))
             test_distractors_dict = pickle.load(open(file_helper.test_distractors_path, 'rb'))
+
+            # key = list(test_distractors_dict.keys())[0]
+            # print(test_distractors_dict[key])
 
             train_dataset = ShapesDataset(
                 train_target_dict, 
@@ -102,7 +106,8 @@ def get_dataloaders(
                 mean=train_dataset.mean,
                 std=train_dataset.std,
                 step3_distractors = valid_distractors_dict,
-                raw=True)
+                raw=True,
+                validation_set = True)
 
             test_dataset = ShapesDataset(
                 test_target_dict,
@@ -202,13 +207,15 @@ def get_shapes_dataloader(
     if not os.path.exists(file_helper.train_features_path):
         print("Features files not present - generating dataset")
         if not step3:
-            generate_shapes_dataset()
+            # generate_shapes_dataset()
+            pass
         else:
             # for step 3, generate different pickle file
             # note that generate_shapes_dataset creates two files
             # one for img.metadata and one for img.data
             # generate_property_set creates one, with imgs itself
-            generate_step3_dataset()
+            # generate_step3_dataset()
+            pass
 
     return get_dataloaders(
         device,
@@ -216,4 +223,5 @@ def get_shapes_dataloader(
         k=k,
         debug=debug,
         dataset=dataset,
-        dataset_type=dataset_type)
+        dataset_type=dataset_type,
+        step3=step3)
