@@ -27,7 +27,7 @@ class TrainHelper():
 
         optimizer.zero_grad()
 
-        target, distractors, indices = batch
+        target, distractors, indices, _ = batch
 
         if inference_step or multi_task:
             md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
@@ -41,12 +41,12 @@ class TrainHelper():
 
         return losses, accuracies
 
-    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, multi_task):
+    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, multi_task, step3):
         
         if multi_task:
             loss_meter = [AverageEnsembleMeter(5), AverageMeter()]
             acc_meter = [AverageEnsembleMeter(5), AverageMeter()]
-        elif inference_step:
+        elif inference_step or step3:
             loss_meter = AverageEnsembleMeter(5)
             acc_meter = AverageEnsembleMeter(5)
         else:
@@ -57,7 +57,7 @@ class TrainHelper():
 
         model.eval()
         for batch in dataloader:
-            target, distractors, indices = batch
+            target, distractors, indices, lkey = batch
             
             if inference_step or multi_task:
                 vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
@@ -72,6 +72,14 @@ class TrainHelper():
 
                 acc_meter[0].update(acc[0])
                 acc_meter[1].update(acc[1])
+            elif step3:
+                lkey = torch.tensor(list(map(int, lkey)))
+                lkey_stack = torch.stack([lkey == 0, lkey == 1, lkey == 2, lkey == 3, lkey == 4])
+                acc = (torch.sum(lkey_stack.cpu().float() * acc.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).numpy()
+                loss2 = (torch.sum(lkey_stack.cpu().float() * loss2.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).detach().numpy()
+                loss_meter.update(loss2)
+                acc_meter.update(acc)
+
             else:
                 loss_meter.update(loss2)
                 acc_meter.update(acc)

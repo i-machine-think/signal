@@ -120,6 +120,7 @@ def get_trainer(
     multi_task,
     multi_task_lambda,
     dataset_type,
+    step3,
     baseline_receiver = None,
     diagnostic_receiver = None):
     extract_features = dataset_type == "raw"
@@ -130,6 +131,7 @@ def get_trainer(
         inference_step,
         multi_task,
         multi_task_lambda,
+        step3,
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
         extract_features=extract_features)

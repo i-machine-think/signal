@@ -19,6 +19,7 @@ class ShapesTrainer(nn.Module):
             inference_step,
             multi_task,
             multi_task_lambda,
+            step3,
             baseline_receiver: ShapesReceiver = None,
             diagnostic_receiver: MessagesReceiver = None,
             extract_features=False):
@@ -35,6 +36,7 @@ class ShapesTrainer(nn.Module):
         self.device = device
 
         self.inference_step = inference_step
+        self.step3 = step3
         self.multi_task = multi_task
         self.multi_task_lambda = multi_task_lambda
 
@@ -136,11 +138,17 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index
             accuracy = accuracy.to(dtype=torch.float32)
 
+            # print(type(torch.mean(baseline_loss)), type(baseline_loss), type(accuracy))
+            # print((torch.mean(baseline_loss).shape), (baseline_loss.shape), (accuracy.shape))
+            if self.step3:
+                return torch.mean(baseline_loss), baseline_loss, accuracy, messages
+                
             baseline_accuracy = torch.mean(accuracy).item()
             baseline_mean_loss = torch.mean(baseline_loss)
             baseline_loss = baseline_mean_loss.item()
 
             if not self.multi_task:
+                # print(type(baseline_mean_loss), type(baseline_loss), type(baseline_accuracy))
                 return baseline_mean_loss, baseline_loss, baseline_accuracy, messages
 
             final_loss += (1 - self.multi_task_lambda) * baseline_mean_loss
