@@ -109,6 +109,17 @@ def parse_arguments(args):
         help="If sender model trained using step3 is used",
         action="store_true"
     )
+    parser.add_argument(
+        "--multi-task",
+        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--multi-task-lambda",
+        type=float,
+        default=0.5,
+        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
+    )
 
     args = parser.parse_args(args)
 
@@ -149,11 +160,11 @@ def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, de
         current_accuracies, current_losses = model.forward(messages, properties, sample_count)
         
         accuracies_meter.update(current_accuracies)
-        losses_meter.update(current_losses, crash=False)
+        losses_meter.update(current_losses)
 
     return accuracies_meter, losses_meter
 
-def generate_unique_name(length, vocabulary_size, seed, inference, step3):
+def generate_unique_name(length, vocabulary_size, seed, inference, step3, multi_task, multi_task_lambda):
     result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
     if inference:
         result += '_inference'
@@ -161,15 +172,25 @@ def generate_unique_name(length, vocabulary_size, seed, inference, step3):
     if step3:
         result += '_step3'
 
+    if multi_task:
+        result += '_multi'
+        if multi_task_lambda:
+            result += f'_lambda_{multi_task_lambda}'
+
     return result
 
-def generate_model_name(length, vocabulary_size, messages_seed, training_seed, inference, step3):
+def generate_model_name(length, vocabulary_size, messages_seed, training_seed, inference, step3, multi_task, multi_task_lambda):
     result = f'max_len_{length}_vocab_{vocabulary_size}_msg_seed_{messages_seed}_train_seed_{training_seed}'
     if inference:
         result += '_inference'
     
     if step3:
         result += '_step3'
+
+    if multi_task:
+        result += '_multi'
+        if multi_task_lambda:
+            result += f'_lambda_{multi_task_lambda}'
 
     result += '.p'
 
@@ -224,7 +245,9 @@ def baseline(args):
         vocabulary_size=args.vocab_size,
         seed=args.messages_seed,
         inference=args.inference,
-        step3=args.step3)
+        step3=args.step3,
+        multi_task=args.multi_task,
+        multi_task_lambda=args.multi_task_lambda)
 
     model_name = generate_model_name(
         length=args.max_length,
@@ -232,7 +255,9 @@ def baseline(args):
         messages_seed=args.messages_seed,
         training_seed=args.training_seed,
         inference=args.inference,
-        step3=args.step3)
+        step3=args.step3,
+        multi_task=args.multi_task,
+        multi_task_lambda=args.multi_task_lambda)
 
     model_path = os.path.join(inference_path, model_name)
 
