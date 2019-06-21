@@ -202,7 +202,7 @@ def parse_arguments(args):
     if args.debugging:
         args.iterations = 1000
         args.max_length = 5
-        args.batch_size = 16#64
+        args.batch_size = 64
 
     return args
 
@@ -306,14 +306,6 @@ def baseline(args):
         print(header)
         log_template = ' '.join(
             '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
-    if args.step3:
-        # The data is saved according to the following sequence [hp,vp,sh,co,si]
-        # Thus it should be checked still, with the order in the print statements        
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-PosH Loss-PosW Loss-Color Loss-Shape Loss-Size | Acc-PosH Acc-PosW Acc-Color Acc-Shape Acc-Size | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
-
 
     while iteration < args.iterations:
         for train_batch in train_data:
@@ -325,11 +317,7 @@ def baseline(args):
             if iteration % args.log_interval == 0:
 
                 valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
-<<<<<<< HEAD
-                    model, valid_data, valid_meta_data, device, args.inference_step, step3 = args.step3)
-=======
                     model, valid_data, valid_meta_data, device, args.inference_step, args.multi_task)
->>>>>>> 3d046c5a8c289a21d37370671c342b6ff4b3c92f
 
                 new_best = False
                 
@@ -364,13 +352,9 @@ def baseline(args):
                 #     hidden_receiver,
                 #     loss,
                 #     i)
-                # print(valid_acc_meter.averages)
-                # print(valid_loss_meter.averages)
+
                 # Skip for now
                 if not args.disable_print:
-<<<<<<< HEAD
-                    if args.inference_step or args.step3:
-=======
                     if args.multi_task:
                         print(log_template.format(
                             time.time()-start_time,
@@ -396,7 +380,6 @@ def baseline(args):
                             "BEST" if new_best else ""
                         ))
                     elif args.inference_step:
->>>>>>> 3d046c5a8c289a21d37370671c342b6ff4b3c92f
                         print(log_template.format(
                             time.time()-start_time,
                             epoch,

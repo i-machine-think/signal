@@ -27,8 +27,7 @@ class TrainHelper():
 
         optimizer.zero_grad()
 
-        target, distractors, indices, _ = batch
-        # print('train',len(distractors))
+        target, distractors, indices = batch
 
         if inference_step or multi_task:
             md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
@@ -42,96 +41,29 @@ class TrainHelper():
 
         return losses, accuracies
 
-<<<<<<< HEAD
-    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, step3 = False):
-        
-        if inference_step or step3:
-=======
     def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, multi_task):
         
         if multi_task:
             loss_meter = [AverageEnsembleMeter(5), AverageMeter()]
             acc_meter = [AverageEnsembleMeter(5), AverageMeter()]
         elif inference_step:
->>>>>>> 3d046c5a8c289a21d37370671c342b6ff4b3c92f
             loss_meter = AverageEnsembleMeter(5)
             acc_meter = AverageEnsembleMeter(5)
-        # elif step3:
-        #     loss_meter = AverageEnsembleMeter(5)#AverageMeter()
-        #     acc_meter = AverageEnsembleMeter(5)
         else:
             loss_meter = AverageMeter()
             acc_meter = AverageMeter()
 
         messages = []
-        # batch_avg_accuracies = [0,0,0,0,0]
-        # batch_avg_losses = [0,0,0,0,0]
-        # batch_count = 0
+
         model.eval()
         for batch in dataloader:
-<<<<<<< HEAD
-            if step3:
-                target, distractors, indices, lkey = batch
-                # print('length', len(distractors))
-                # print(len(distractors[0]),len(distractors[1]),len(distractors[2]),len(distractors[3]),len(distractors[4]))
-            else:
-                target, distractors, indices, _ = batch
-
-            if inference_step:
-=======
             target, distractors, indices = batch
             
             if inference_step or multi_task:
->>>>>>> 3d046c5a8c289a21d37370671c342b6ff4b3c92f
                 vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
             else:
                 vmd = None
 
-<<<<<<< HEAD
-            # print('eval',len(distractors))
-
-            # # if not step3:
-            # n = np.random.randint(1)
-            # if len(target) == 5:
-            #     loss1, loss2, acc, msg = model.forward(target[n], distractors[n], vmd)
-            #     lkey = torch.tensor(list(map(int, lkey)))
-
-            #     lkey_stack = torch.stack([lkey == 0, lkey == 1, lkey == 2, lkey == 3, lkey == 4])
-            #     class_acc = torch.sum(lkey_stack.float() * acc.float(), dim=1)/torch.sum(lkey_stack.float(),dim=1)
-            #     class_acc = class_acc.numpy()
-            #     acc = torch.mean(acc).item()
-            #     acc = class_acc
-            # else:
-            loss1, loss2, acc, msg = model.forward(target, distractors, vmd)
-            if step3:
-                # The data is saved according to the following sequence [hp,vp,sh,co,si]
-                # Thus it should be checked still, with the order in the print statements
-                lkey = torch.tensor(list(map(int, lkey)))
-                lkey_stack = torch.stack([lkey == 0, lkey == 1, lkey == 2, lkey == 3, lkey == 4])
-                acc = (torch.sum(lkey_stack.float() * acc.float(), dim=1)/torch.sum(lkey_stack.float(),dim=1)).numpy()
-                loss2 = (torch.sum(lkey_stack.float() * loss2.float(), dim=1)/torch.sum(lkey_stack.float(),dim=1)).detach().numpy()
-                # class_acc = class_acc.numpy()
-            elif not inference_step:
-                acc = torch.mean(acc).item()
-            # run for step3
-            # calculations are done according to the five possible distractor sets
-            # one for each class
-            # else:
-            #     loss2 = []
-            #     acc = []
-            #     for distractor in distractors:
-            #         class_loss1, _, class_acc, msg = model.forward(target, distractor, vmd)
-            #         loss2.append(class_loss1.item())
-            #         acc.append(class_acc)
-            #     loss2 = np.array(loss2)
-
-            if inference_step or step3:
-                loss_meter.update(loss2, crash=False)
-            else:
-                loss_meter.update(loss1)
-
-            acc_meter.update(acc)
-=======
             _, loss2, acc, msg = model.forward(target, distractors, vmd)
 
             if multi_task:
@@ -144,14 +76,7 @@ class TrainHelper():
                 loss_meter.update(loss2)
                 acc_meter.update(acc)
 
->>>>>>> 3d046c5a8c289a21d37370671c342b6ff4b3c92f
             messages.append(msg)
-
-            # batch_avg_accuracies += acc
-            # batch_avg_losses += loss2
-            # batch_count += 1
-        # print('Batch avg acc.', batch_avg_accuracies/batch_count)
-        # print('Batch avg loss', batch_avg_losses/batch_count)
 
         return (
             loss_meter,

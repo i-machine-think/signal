@@ -136,14 +136,6 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index
             accuracy = accuracy.to(dtype=torch.float32)
 
-<<<<<<< HEAD
-            # print(all_scores)
-            # print(len(distractors))
-            # print(loss.shape)
-            # return torch.mean(loss), loss, torch.mean(accuracy).item(), messages
-            # print(accuracy)
-            return torch.mean(loss), loss, accuracy, messages
-=======
             baseline_accuracy = torch.mean(accuracy).item()
             baseline_mean_loss = torch.mean(baseline_loss)
             baseline_loss = baseline_mean_loss.item()
@@ -154,4 +146,3 @@ class ShapesTrainer(nn.Module):
             final_loss += (1 - self.multi_task_lambda) * baseline_mean_loss
 
             return final_loss, (inference_losses, baseline_loss), (inference_accuracies, baseline_accuracy), messages
->>>>>>> 3d046c5a8c289a21d37370671c342b6ff4b3c92f
