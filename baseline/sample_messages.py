@@ -102,34 +102,50 @@ def parse_arguments(args):
         help="If sender model trained using step3 is used",
         action="store_true"
     )
+    parser.add_argument(
+        "--multi-task",
+        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--multi-task-lambda",
+        type=float,
+        default=0.5,
+        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
+    )
 
     args = parser.parse_args(args)
     return args
 
-def generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type):
+def generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda):
     name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}'
     if inference:
         name += '_inference'
     
     if step3:
         name += '_step3'
+    
+    if multi_task:
+        name += '_multi'
+        if multi_task_lambda:
+            name += f'_lambda_{multi_task_lambda}'
 
     name += f'.{set_type}'
 
     return name
 
-def generate_messages_filename(max_length, vocab_size, seed, inference, step3, set_type):
+def generate_messages_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type)}.messages.npy'
+    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda)}.messages.npy'
     return name
 
-def generate_indices_filename(max_length, vocab_size, seed, inference, step3, set_type):
+def generate_indices_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type)}.indices.npy'
+    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda)}.indices.npy'
     return name
 
 def sample_messages_from_dataset(model, args, dataset, dataset_type):
@@ -145,13 +161,13 @@ def sample_messages_from_dataset(model, args, dataset, dataset_type):
         current_messages = model(target, distractors)
         messages.extend(current_messages.cpu().tolist())
 
-    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type)
+    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type, args.multi_task, args.multi_task_lambda)
     messages_filepath = os.path.join(args.output_path,  messages_filename)
     np.save(messages_filepath, np.array(messages))
 
     # Added lines to save properties as np.save as well
     # Separate file is made, similar to generate_messages_filename
-    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type)
+    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type, args.multi_task, args.multi_task_lambda)
     indices_filepath = os.path.join(args.output_path, indices_filename)
     np.save(indices_filepath, np.array(indices))
 
@@ -176,7 +192,13 @@ def baseline(args):
     sender = torch.load(args.sender_path, map_location=device)
     sender.greedy = True
     
-    model = get_trainer(sender, None, device, inference_step=False, dataset_type="raw")
+    model = get_trainer(
+        sender,
+        device,
+        inference_step=False,
+        multi_task=args.multi_task,
+        multi_task_lambda=args.multi_task_lambda,
+        dataset_type="raw")
     
     model.visual_module = torch.load(
         args.visual_module_path,
