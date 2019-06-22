@@ -105,3 +105,4 @@ venv.bak/
 /baseline/runs/
 /baseline/data/features/
 /baseline/data/*.pckl
+/baseline/results/*

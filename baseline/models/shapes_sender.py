@@ -38,11 +38,6 @@ class ShapesSender(nn.Module):
         else:
             self.eos_id = eos_id
 
-        # This is only used when not training using raw data
-        # self.input_module = ShapesMetaVisualModule(
-        #     hidden_size=hidden_size, dataset_type=dataset_type
-        # )
-
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.greedy = greedy
@@ -60,11 +55,9 @@ class ShapesSender(nn.Module):
         self.embedding = nn.Parameter(
             torch.empty((vocab_size, embedding_size), dtype=torch.float32)
         )
-        # self.embedding = nn.Embedding(vocab_size, embedding_size)
 
-        self.linear_out = nn.Linear(
-            hidden_size, vocab_size
-        )  # from a hidden state to the vocab
+        self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
+        
         if reset_params:
             self.reset_parameters()
 
@@ -176,8 +169,6 @@ class ShapesSender(nn.Module):
                 emb = torch.matmul(output[-1], self.embedding)
             else:
                 emb = self.embedding[output[-1]]
-
-            # emb = self.embedding.forward(output[-1])
 
             embeds.append(emb)
 

@@ -65,7 +65,6 @@ def get_image(seed, shape=-1, color=-1, n=1, nOtherShapes=0, shouldOthersBeSame=
     np.random.seed(seed)
 
     data = np.zeros((WIDTH, HEIGHT, 4), dtype=np.uint8)
-    PIXEL_SCALE = 2
     surf = cairo.ImageSurface.create_for_data(data, cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
     ctx = cairo.Context(surf)
     ctx.set_source_rgb(0.0, 0.0, 0.0)

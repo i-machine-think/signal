@@ -427,33 +427,6 @@ def baseline(args):
         if converged:
             break
 
-    best_model = get_trainer(sender, receiver, device, args.inference_step, args.dataset_type)
-    state = torch.load(
-        "{}/best_model".format(run_folder),
-        map_location=lambda storage, location: storage,
-    )
-    best_model.load_state_dict(state)
-    best_model.to(device)
-    # Evaluate best model on test data
-    _, test_acc_meter, _, test_messages, _, _ = train_helper.evaluate(
-        best_model, test_data, device, args.inference_step)
-    if not args.disable_print:
-        print("Test accuracy: {}".format(test_acc_meter.avg))
-
-    # Update receiver and sender files with new state
-    torch.save(best_model.sender, sender_file)
-    torch.save(best_model.receiver, receiver_file)
-
-    if args.dataset_type == "raw":
-        best_model.to(torch.device("cpu"))
-        torch.save(best_model.visual_module, file_helper.model_checkpoint_path)
-
-    torch.save(test_messages, "{}/test_messages.p".format(run_folder))
-    pickle.dump(
-        test_acc_meter, open(
-            "{}/test_accuracy_meter.p".format(run_folder), "wb")
-    )
-
     return run_folder
 
 
