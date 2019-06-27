@@ -154,7 +154,7 @@ def sample_messages_from_dataset(model, args, dataset, dataset_type):
     
     for i, batch in enumerate(dataset):
         print(f'{dataset_type}: {i}/{len(dataset)}       \r', end='')
-        target, distractors, current_indices = batch
+        target, distractors, current_indices, _ = batch
         
         current_target_indices = current_indices[:, 0].detach().cpu().tolist()
         indices.extend(current_target_indices)
@@ -198,7 +198,8 @@ def baseline(args):
         inference_step=False,
         multi_task=args.multi_task,
         multi_task_lambda=args.multi_task_lambda,
-        dataset_type="raw")
+        dataset_type="raw",
+        step3=False)
     
     model.visual_module = torch.load(
         args.visual_module_path,
