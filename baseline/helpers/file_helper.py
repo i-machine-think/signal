@@ -21,9 +21,9 @@ class FileHelper:
         if not os.path.exists(features_folder_path):
             os.mkdir(features_folder_path)
             
-        checkpoints_folder_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER)
-        if not os.path.exists(checkpoints_folder_path):
-            os.mkdir(checkpoints_folder_path)
+        self._checkpoints_folder_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER)
+        if not os.path.exists(self._checkpoints_folder_path):
+            os.mkdir(self._checkpoints_folder_path)
 
         self._model_checkpoint_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, 'extractor.p')
 
@@ -164,10 +164,6 @@ class FileHelper:
         set_path = os.path.join(self._data_path, f'{set_name}.input')
         return set_path
 
-    def create_unique_sender_path(self, model_name: str):
-        sender_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, f'sender_{model_name}.p')
-        return sender_path
-
-    def create_unique_visual_module_path(self, model_name: str):
-        visual_module_path = os.path.join(self._data_path, CHECKPOINTS_FOLDER, f'visual_module_{model_name}.p')
-        return visual_module_path
+    def create_unique_model_path(self, model_name: str):
+        receiver_path = os.path.join(self._checkpoints_folder_path, f'{model_name}.pt')
+        return receiver_path

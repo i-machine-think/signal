@@ -13,6 +13,8 @@ from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
 
+from tensorboardX import SummaryWriter
+
 def parse_arguments(args):
     # Training settings
     parser = argparse.ArgumentParser(
@@ -196,6 +198,16 @@ def parse_arguments(args):
         default=0.5,
         help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
     )
+    parser.add_argument(
+        "--test-mode",
+        help="Only run the saved model on the test set",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--resume-training",
+        help="Resume the training from the saved model state",
+        action="store_true"
+    )
 
     args = parser.parse_args(args)
 
@@ -205,6 +217,65 @@ def parse_arguments(args):
         args.batch_size = 16
 
     return args
+
+def save_model_state(model, checkpoint_path: str, epoch: int, iteration: int, best_score: int):
+    checkpoint_state = {}
+
+    if model.sender:
+        checkpoint_state['sender'] = model.sender.state_dict()
+
+    if model.visual_module:
+        checkpoint_state['visual_module'] = model.visual_module.state_dict()
+
+    if model.baseline_receiver:
+        checkpoint_state['baseline_receiver'] = model.baseline_receiver.state_dict()
+        
+    if model.diagnostic_receiver:
+        checkpoint_state['diagnostic_receiver'] = model.diagnostic_receiver.state_dict()
+        
+    if epoch:
+        checkpoint_state['epoch'] = epoch
+        
+    if iteration:
+        checkpoint_state['iteration'] = iteration
+
+    if best_score:
+        checkpoint_state['best_score'] = best_score
+
+    torch.save(checkpoint_state, checkpoint_path)
+
+def load_model_state(model, model_path):
+    if not os.path.isfile(model_path):
+        raise Exception(f'Model not found at "{model_path}"')
+    
+    checkpoint = torch.load(model_path)
+    
+    if 'sender' in checkpoint.keys() and checkpoint['sender']:
+        model.sender.load_state_dict(checkpoint['sender'])
+        
+    if 'visual_module' in checkpoint.keys() and checkpoint['visual_module']:
+        model.visual_module.load_state_dict(checkpoint['visual_module'])
+        
+    if 'baseline_receiver' in checkpoint.keys() and checkpoint['baseline_receiver']:
+        model.baseline_receiver.load_state_dict(checkpoint['baseline_receiver'])
+        
+    if 'diagnostic_receiver' in checkpoint.keys() and checkpoint['diagnostic_receiver']:
+        model.diagnostic_receiver.load_state_dict(checkpoint['diagnostic_receiver'])
+
+    best_score = -1.
+    if 'best_score' in checkpoint.keys() and checkpoint['best_score']:
+        best_score = checkpoint['best_score']
+        
+    epoch = 0
+    if 'epoch' in checkpoint.keys() and checkpoint['epoch']:
+        epoch = checkpoint['epoch']
+        
+    iteration = 0
+    if 'iteration' in checkpoint.keys() and checkpoint['iteration']:
+        iteration = checkpoint['iteration']
+
+    return epoch, iteration, best_score
+
 
 def baseline(args):
 
@@ -245,15 +316,22 @@ def baseline(args):
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver)
 
-    sender_path = file_helper.create_unique_sender_path(model_name)
-    visual_module_path = file_helper.create_unique_visual_module_path(model_name)
+    model_path = file_helper.create_unique_model_path(model_name)
+
+    best_accuracy = -1.
+    epoch = 0
+    iteration = 0
+
+    if args.resume_training or args.test_mode:
+        epoch, iteration, best_accuracy = load_model_state(model, model_path)
+        print(f'Loaded model. Resuming from - epoch: {epoch} | iteration: {iteration} | best accuracy: {best_accuracy}')
 
     if not os.path.exists(file_helper.model_checkpoint_path):
         print('No checkpoint exists. Saving model...\r')
         torch.save(model.visual_module, file_helper.model_checkpoint_path)
         print('No checkpoint exists. Saving model...Done')
 
-    train_data, valid_data, test_data, valid_meta_data, valid_features = get_training_data(
+    train_data, valid_data, test_data, valid_meta_data, _ = get_training_data(
         device=device,
         batch_size=args.batch_size,
         k=args.k,
@@ -290,8 +368,6 @@ def baseline(args):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     # Train
-    epoch = 0
-    iteration = 0
     current_patience = args.patience
     best_accuracy = -1.
     converged = False
@@ -307,6 +383,14 @@ def baseline(args):
         print(header)
         log_template = ' '.join(
             '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
+
+        # writers = [
+        #     SummaryWriter(logdir=f'{run_folder}/Color'),
+        #     SummaryWriter(logdir=f'{run_folder}/Shape'),
+        #     SummaryWriter(logdir=f'{run_folder}/Size'),
+        #     SummaryWriter(logdir=f'{run_folder}/Vertical_position'),
+        #     SummaryWriter(logdir=f'{run_folder}/Horizontal_position')
+        # ]
     if args.step3:
         # The data is saved according to the following sequence [hp,vp,sh,co,si]
         # Thus it should be checked still, with the order in the print statements        
@@ -315,6 +399,19 @@ def baseline(args):
         log_template = ' '.join(
             '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
 
+    if args.test_mode:
+        test_loss_meter, test_acc_meter, _ = train_helper.evaluate(
+            model, test_data, test_meta_data, device, args.inference_step, args.multi_task, args.step3)
+
+        if args.multi_task:
+            average_test_accuracy = args.multi_task_lambda * test_acc_meter[0].avg + (1 - args.multi_task_lambda) * test_acc_meter[1].avg
+            average_test_loss = args.multi_task_lambda * test_loss_meter[0].avg + (1 - args.multi_task_lambda) * test_loss_meter[1].avg
+        else:
+            average_test_accuracy = test_acc_meter.avg
+            average_test_loss = test_loss_meter.avg
+
+        print(f'TEST results: loss: {average_test_loss} | accuracy: {average_test_accuracy}')
+        return
 
     while iteration < args.iterations:
         for train_batch in train_data:
@@ -346,21 +443,7 @@ def baseline(args):
                     new_best = True
                     best_accuracy = average_valid_accuracy
                     current_patience = args.patience
-                    torch.save(model.sender, sender_path)
-                    torch.save(model.visual_module, visual_module_path)
-
-                # metrics_helper.log_metrics(
-                #     model,
-                #     valid_meta_data,
-                #     valid_features,
-                #     valid_loss_meter,
-                #     valid_acc_meter,
-                #     valid_entropy_meter,
-                #     valid_messages, 
-                #     hidden_sender,
-                #     hidden_receiver,
-                #     loss,
-                #     i)
+                    save_model_state(model, model_path, epoch, iteration, best_accuracy)
 
                 # Skip for now
                 if not args.disable_print:
@@ -410,6 +493,11 @@ def baseline(args):
                             valid_acc_meter.averages[4],
                             "BEST" if new_best else ""
                         ))
+
+                        # for i in range(5):
+                        #     writers[i].add_scalar('accuracy', valid_acc_meter.averages[i], global_step=iteration)
+                        #     writers[i].add_scalar('loss', valid_loss_meter.averages[i], global_step=iteration)
+
                     else:
                         print(
                             "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
