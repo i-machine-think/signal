@@ -166,7 +166,7 @@ def parse_arguments(args):
     )
     parser.add_argument("--disable-print",
                         help="Disable printing", action="store_true"
-    )                        
+    )
     parser.add_argument(
         "--device",
         type=str,
@@ -229,13 +229,13 @@ def save_model_state(model, checkpoint_path: str, epoch: int, iteration: int, be
 
     if model.baseline_receiver:
         checkpoint_state['baseline_receiver'] = model.baseline_receiver.state_dict()
-        
+
     if model.diagnostic_receiver:
         checkpoint_state['diagnostic_receiver'] = model.diagnostic_receiver.state_dict()
-        
+
     if epoch:
         checkpoint_state['epoch'] = epoch
-        
+
     if iteration:
         checkpoint_state['iteration'] = iteration
 
@@ -247,29 +247,29 @@ def save_model_state(model, checkpoint_path: str, epoch: int, iteration: int, be
 def load_model_state(model, model_path):
     if not os.path.isfile(model_path):
         raise Exception(f'Model not found at "{model_path}"')
-    
+
     checkpoint = torch.load(model_path)
-    
+
     if 'sender' in checkpoint.keys() and checkpoint['sender']:
         model.sender.load_state_dict(checkpoint['sender'])
-        
+
     if 'visual_module' in checkpoint.keys() and checkpoint['visual_module']:
         model.visual_module.load_state_dict(checkpoint['visual_module'])
-        
+
     if 'baseline_receiver' in checkpoint.keys() and checkpoint['baseline_receiver']:
         model.baseline_receiver.load_state_dict(checkpoint['baseline_receiver'])
-        
+
     if 'diagnostic_receiver' in checkpoint.keys() and checkpoint['diagnostic_receiver']:
         model.diagnostic_receiver.load_state_dict(checkpoint['diagnostic_receiver'])
 
     best_score = -1.
     if 'best_score' in checkpoint.keys() and checkpoint['best_score']:
         best_score = checkpoint['best_score']
-        
+
     epoch = 0
     if 'epoch' in checkpoint.keys() and checkpoint['epoch']:
         epoch = checkpoint['epoch']
-        
+
     iteration = 0
     if 'iteration' in checkpoint.keys() and checkpoint['iteration']:
         iteration = checkpoint['iteration']
@@ -297,11 +297,11 @@ def baseline(args):
 
     # get sender and receiver models and save them
     sender, baseline_receiver, diagnostic_receiver = get_sender_receiver(device, args)
-    
+
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
     torch.save(sender, sender_file)
-    
+
     if baseline_receiver:
         torch.save(baseline_receiver, receiver_file)
 
@@ -393,7 +393,7 @@ def baseline(args):
         # ]
     if args.step3:
         # The data is saved according to the following sequence [hp,vp,sh,co,si]
-        # Thus it should be checked still, with the order in the print statements        
+        # Thus it should be checked still, with the order in the print statements
         header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-PosH Loss-PosW Loss-Color Loss-Shape Loss-Size | Acc-PosH Acc-PosW Acc-Color Acc-Shape Acc-Size | Best'
         print(header)
         log_template = ' '.join(
@@ -426,7 +426,7 @@ def baseline(args):
                     model, valid_data, valid_meta_data, device, args.inference_step, args.multi_task, args.step3)
 
                 new_best = False
-                
+
                 if args.multi_task:
                     average_valid_accuracy = args.multi_task_lambda * valid_acc_meter[0].avg + (1 - args.multi_task_lambda) * valid_acc_meter[1].avg
                 else:
@@ -509,9 +509,9 @@ def baseline(args):
                         )
 
             iteration += 1
-        
+
         epoch += 1
-        
+
         if converged:
             break
 

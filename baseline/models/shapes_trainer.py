@@ -65,19 +65,19 @@ class ShapesTrainer(nn.Module):
         batch_size = target.shape[0]
 
         target = target.to(self.device)
-        distractors = [d.to(self.device) for d in distractors]
-        
+        distractors = [d.to(self.device) for d in distractors] # There is a list of distractors
+
         if self.extract_features:
-            target = self.visual_module(target)
+            target = self.visual_module(target)  # This is the "f" function in the paper! No eta exists.
             distractors = [self.visual_module(d) for d in distractors]
 
         messages, lengths, _, _, _ = self.sender.forward(
-            hidden_state=target)
+            hidden_state=target) # The first hidden state is the target, as in paper.
 
-        messages = self._pad(messages, lengths)
+        messages = self._pad(messages, lengths) # If I understand correctly: After eos happens the first time, all later words in message are eos as well.
 
         if not self.diagnostic_receiver and not self.baseline_receiver:
-            return messages
+            return messages # if now receiver given, just give out messages
 
         final_loss = 0
         if self.inference_step or self.multi_task:
@@ -96,24 +96,24 @@ class ShapesTrainer(nn.Module):
                 loss += current_loss
                 inference_losses[i] = current_loss.item()
                 inference_accuracies[i] = torch.mean((torch.argmax(out_property, dim=1) == current_targets).float()).item()
-            
+
             if not self.multi_task:
                 return loss, inference_losses, inference_accuracies, messages
-            
+
             final_loss = self.multi_task_lambda * loss
-        
+
         if not self.inference_step or self.multi_task:
-            r_transform, _ = self.baseline_receiver.forward(messages=messages)
+            r_transform, _ = self.baseline_receiver.forward(messages=messages) # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
 
             baseline_loss = 0
 
             target = target.view(batch_size, 1, -1)
             r_transform = r_transform.view(batch_size, -1, 1)
 
-            target_score = torch.bmm(target, r_transform).squeeze()  # scalar
+            target_score = torch.bmm(target, r_transform).squeeze()  # scalars (over batch). Does a batch matrix multiplication
 
             all_scores = torch.zeros((batch_size, 1 + len(distractors)))
-            
+
             target_index = 0
             all_scores[:, target_index] = target_score
 
@@ -142,7 +142,7 @@ class ShapesTrainer(nn.Module):
             # print((torch.mean(baseline_loss).shape), (baseline_loss.shape), (accuracy.shape))
             if self.step3:
                 return torch.mean(baseline_loss), baseline_loss, accuracy, messages
-                
+
             baseline_accuracy = torch.mean(accuracy).item()
             baseline_mean_loss = torch.mean(baseline_loss)
             baseline_loss = baseline_mean_loss.item()
