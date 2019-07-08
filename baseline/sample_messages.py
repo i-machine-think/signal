@@ -21,18 +21,11 @@ def parse_arguments(args):
         "--seed", type=int, default=42, metavar="S", help="random seed (default: 42)"
     )
     parser.add_argument(
-        "--sender-path",
+        "--model-path",
         type=str,
         required=True,
         metavar="S",
-        help="Sender to be loaded",
-    )
-    parser.add_argument(
-        "--visual-module-path",
-        type=str,
-        required=True,
-        metavar="S",
-        help="Visual module to be loaded",
+        help="Model to be loaded",
     )
     parser.add_argument(
         "--output-path",
@@ -174,11 +167,8 @@ def sample_messages_from_dataset(model, args, dataset, dataset_type):
 def baseline(args):
     args = parse_arguments(args)
 
-    if not os.path.isfile(args.sender_path):
-        raise Exception('Sender path is invalid')
-        
-    if not os.path.isfile(args.visual_module_path):
-        raise Exception('Visual module path is invalid')
+    if not os.path.isfile(args.model_path):
+        raise Exception('Model path is invalid')
 
     if args.device:
         device = torch.device(args.device)
@@ -188,8 +178,14 @@ def baseline(args):
     train_helper = TrainHelper(device)
     train_helper.seed_torch(seed=args.seed)
 
+    checkpoint = torch.load(args.model_path)
+
+    args.inference_step = None
+    args.sender_path = None
+    args.receiver_path = None
     # get sender and receiver models and save them
-    sender = torch.load(args.sender_path, map_location=device)
+    sender, _, _ = get_sender_receiver(device, args)
+    sender.load_state_dict(checkpoint['sender'])
     sender.greedy = True
     
     model = get_trainer(
@@ -201,9 +197,7 @@ def baseline(args):
         dataset_type="raw",
         step3=False)
     
-    model.visual_module = torch.load(
-        args.visual_module_path,
-        map_location=lambda storage, location: storage)
+    model.visual_module.load_state_dict(checkpoint['visual_module'])
 
     train_data, validation_data, test_data = get_shapes_dataloader(
         device=device,
