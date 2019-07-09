@@ -20,194 +20,40 @@ def parse_arguments(args):
     parser = argparse.ArgumentParser(
         description="Training Sender/Receiver Agent on a task"
     )
-    parser.add_argument(
-        "--debugging",
-        help="Enable debugging mode (default: False)",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--single-model",
-        help="Use a single model (default: False)",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--dataset-type",
-        type=str,
-        default="raw",
-        metavar="S",
-        help="type of input used by dataset pick from raw/features/meta (default features)",
-    )
-    parser.add_argument(
-        "--greedy",
-        help="Use argmax at prediction time instead of sampling (default: False)",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--iterations",
-        type=int,
-        default=10000,
-        metavar="N",
-        help="number of batch iterations to train (default: 10k)",
-    )
-    parser.add_argument(
-        "--log-interval",
-        type=int,
-        default=200,
-        metavar="N",
-        help="number of iterations between logs (default: 200)",
-    )
-    parser.add_argument(
-        "--seed", type=int, default=42, metavar="S", help="random seed (default: 42)"
-    )
-    parser.add_argument(
-        "--embedding-size",
-        type=int,
-        default=64,
-        metavar="N",
-        help="embedding size for embedding layer (default: 64)",
-    )
-    parser.add_argument(
-        "--hidden-size",
-        type=int,
-        default=64,
-        metavar="N",
-        help="hidden size for hidden layer (default: 64)",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=1024,
-        metavar="N",
-        help="input batch size for training (default: 1024)",
-    )
-    parser.add_argument(
-        "--max-length",
-        type=int,
-        default=10,
-        metavar="N",
-        help="max sentence length allowed for communication (default: 10)",
-    )
-    parser.add_argument(
-        "--k",
-        type=int,
-        default=3,
-        metavar="N",
-        help="Number of distractors (default: 3)",
-    )
-    parser.add_argument(
-        "--vocab-size",
-        type=int,
-        default=25,
-        metavar="N",
-        help="Size of vocabulary (default: 25)",
-    )
-    parser.add_argument(
-        "--darts",
-        help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "--num-nodes",
-        type=int,
-        default=4,
-        metavar="N",
-        help="Size of darts cell to use with random-darts (default: 4)",
-    )
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default=1e-3,
-        metavar="N",
-        help="Adam learning rate (default: 1e-3)",
-    )
-    parser.add_argument(
-        "--sender-path",
-        type=str,
-        default=False,
-        metavar="S",
-        help="Sender to be loaded",
-    )
-    parser.add_argument(
-        "--receiver-path",
-        type=str,
-        default=False,
-        metavar="S",
-        help="Receiver to be loaded",
-    )
-    parser.add_argument(
-        "--freeze-sender",
-        help="Freeze sender weights (do not train) ",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--freeze-receiver",
-        help="Freeze receiver weights (do not train) ",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--obverter-setup",
-        help="Enable obverter setup with shapes",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--name",
-        type=str,
-        default=False,
-        metavar="S",
-        help="Name to append to run file name",
-    )
-    parser.add_argument(
-        "--folder",
-        type=str,
-        default=False,
-        metavar="S",
-        help="Additional folder within runs/",
-    )
-    parser.add_argument("--disable-print",
-                        help="Disable printing", action="store_true"
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
-    parser.add_argument(
-        "--patience",
-        type=int,
-        default=10,
-        help="Amount of epochs to check for not improved validation score before early stopping",
-    )
-    parser.add_argument(
-        "--inference-step",
-        action="store_true",
-        help="Use inference step receiver model",
-    )
-    parser.add_argument(
-        "--step3",
-        help="Run with property specific distractors",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--multi-task",
-        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task-lambda",
-        type=float,
-        default=0.5,
-        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
-    )
-    parser.add_argument(
-        "--test-mode",
-        help="Only run the saved model on the test set",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--resume-training",
-        help="Resume the training from the saved model state",
-        action="store_true"
-    )
+    parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)
+    parser.add_argument("--single-model",help="Use a single model (default: False)",action="store_true",)
+    parser.add_argument("--dataset-type",type=str,default="raw",metavar="S",help="type of input used by dataset pick from raw/features/meta (default features)",)
+    parser.add_argument("--greedy",help="Use argmax at prediction time instead of sampling (default: False)",action="store_true",)
+    parser.add_argument("--iterations",type=int,default=10000,metavar="N",help="number of batch iterations to train (default: 10k)",)
+    parser.add_argument("--log-interval",type=int,default=200,metavar="N",help="number of iterations between logs (default: 200)",)
+    parser.add_argument("--seed", type=int, default=42, metavar="S", help="random seed (default: 42)")
+    parser.add_argument("--embedding-size",type=int,default=64,metavar="N",help="embedding size for embedding layer (default: 64)",)
+    parser.add_argument("--hidden-size",type=int,default=64,metavar="N",help="hidden size for hidden layer (default: 64)",)
+    parser.add_argument("--batch-size",type=int,default=1024,metavar="N",help="input batch size for training (default: 1024)",)
+    parser.add_argument("--max-length",type=int,default=10,metavar="N",help="max sentence length allowed for communication (default: 10)",)
+    parser.add_argument("--k",type=int,default=3,metavar="N",help="Number of distractors (default: 3)",)
+    parser.add_argument("--vocab-size",type=int,default=25,metavar="N",help="Size of vocabulary (default: 25)",)
+    parser.add_argument("--darts",help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",action="store_true",default=False,)
+    parser.add_argument("--num-nodes",type=int,default=4,metavar="N",help="Size of darts cell to use with random-darts (default: 4)",)
+    parser.add_argument("--lr",type=float,default=1e-3,metavar="N",help="Adam learning rate (default: 1e-3)",)
+    parser.add_argument("--sender-path",type=str,default=False,metavar="S",help="Sender to be loaded",)
+    parser.add_argument("--receiver-path",type=str,default=False,metavar="S",help="Receiver to be loaded",)
+    parser.add_argument("--freeze-sender",help="Freeze sender weights (do not train) ",action="store_true",)
+    parser.add_argument("--freeze-receiver",help="Freeze receiver weights (do not train) ",action="store_true",)
+    parser.add_argument("--obverter-setup",help="Enable obverter setup with shapes",action="store_true",)
+    parser.add_argument("--inference-step",action="store_true",help="Use inference step receiver model",)
+    parser.add_argument("--step3",help="Run with property specific distractors",action="store_true",)
+    parser.add_argument("--multi-task",help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",action="store_true")
+    parser.add_argument("--multi-task-lambda",type=float,default=0.5,help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",)
+
+    # Arguments not specific to the training process itself
+    parser.add_argument("--name",type=str,default=False,metavar="S",help="Name to append to run file name",)
+    parser.add_argument("--folder",type=str,default=False,metavar="S",help="Additional folder within runs/",)
+    parser.add_argument("--disable-print",help="Disable printing", action="store_true")
+    parser.add_argument("--device",type=str,help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+    parser.add_argument("--patience",type=int,default=10,help="Amount of epochs to check for not improved validation score before early stopping",)
+    parser.add_argument("--test-mode",help="Only run the saved model on the test set",action="store_true")
+    parser.add_argument("--resume-training",help="Resume the training from the saved model state",action="store_true")
 
     args = parser.parse_args(args)
 

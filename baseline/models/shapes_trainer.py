@@ -128,14 +128,14 @@ class ShapesTrainer(nn.Module):
                 baseline_loss += torch.max(
                     torch.tensor(0.0, device=self.device), 1.0 -
                     target_score + d_score
-                )
+                ) # This creates the sum in equation (1) of the original paper!
                 i += 1
 
             # Calculate accuracy
             all_scores = torch.exp(all_scores)
             _, max_idx = torch.max(all_scores, 1)
 
-            accuracy = max_idx == target_index
+            accuracy = max_idx == target_index # model liegt "richtig", wenn die dot-product similarity zwischen target und Ergebnis größer ist als die mit allen Distractors.
             accuracy = accuracy.to(dtype=torch.float32)
 
             # print(type(torch.mean(baseline_loss)), type(baseline_loss), type(accuracy))
@@ -144,7 +144,7 @@ class ShapesTrainer(nn.Module):
                 return torch.mean(baseline_loss), baseline_loss, accuracy, messages
 
             baseline_accuracy = torch.mean(accuracy).item()
-            baseline_mean_loss = torch.mean(baseline_loss)
+            baseline_mean_loss = torch.mean(baseline_loss) # without item, since it will be backpropagated
             baseline_loss = baseline_mean_loss.item()
 
             if not self.multi_task:
