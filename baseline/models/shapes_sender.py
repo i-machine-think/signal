@@ -5,14 +5,15 @@ from torch.nn import functional as F
 
 from .shapes_meta_visual_module import ShapesMetaVisualModule
 from .darts_cell import DARTSCell
+from .vector_quantization import VectorQuantization
 
 from helpers.utils_helper import UtilsHelper
 
 class ShapesSender(nn.Module):
     def __init__(
         self,
-        vocab_size,
-        output_len,
+        vocab_size, # Specifies number of words in baseline setting. In VQ-VAE Setting: Dimension of embedding space.
+        output_len, # called max_length in other files
         sos_id,
         device,
         eos_id=None,
@@ -23,7 +24,10 @@ class ShapesSender(nn.Module):
         genotype=None,
         dataset_type="meta",
         reset_params=True,
-        inference_step=False):
+        inference_step=False,
+        vqvae=False, # If True, use VQ instead of Gumbel Softmax
+        discrete_latent_number=25 # Number of embedding vectors e_i in embedding table in vqvae setting
+        ):
 
         super().__init__()
         self.vocab_size = vocab_size
@@ -57,15 +61,25 @@ class ShapesSender(nn.Module):
         )
 
         self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
+        self.vqvae = vqvae
 
         if reset_params:
             self.reset_parameters()
 
+        if self.vqvae:
+            self.discrete_latent_number = discrete_latent_number
+
+            self.e = nn.Parameter(
+                torch.empty((self.discrete_latent_number, self.vocab_size), dtype=torch.float32)
+            ) # The discrete embedding table
+            self.vq = VectorQuantization()
+
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
-
         nn.init.constant_(self.linear_out.weight, 0)
         nn.init.constant_(self.linear_out.bias, 0)
+        if self.vqvae:
+            nn.init.normal_(self.e, 0.0, 0.1)
 
         # self.input_module.reset_parameters()
 
@@ -123,12 +137,13 @@ class ShapesSender(nn.Module):
         """
         if self.training:
             max_predicted, vocab_index = torch.max(token, dim=1)
-            mask = (vocab_index == self.eos_id) * (max_predicted == 1.0)
+            mask = (vocab_index == self.eos_id) * (max_predicted == 1.0) # all words in batch that are "already done"
         else:
             mask = token == self.eos_id
 
         mask *= seq_lengths == initial_length
-        seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended
+        import pdb; pdb.set_trace()
+        seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended. This tells the sequence to be smaller at the positions where the sentence already ended.
 
     def forward(self, tau=1.2, hidden_state=None):
         """
@@ -141,31 +156,35 @@ class ShapesSender(nn.Module):
         state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output
-        if self.training:
-            output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
-            output[0][:, self.sos_id] = 1.0
+        if not self.vqvae:
+            if self.training:
+                output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
+                output[0][:, self.sos_id] = 1.0
+            else:
+                output = [
+                    torch.full(
+                        (batch_size,),
+                        fill_value=self.sos_id,
+                        dtype=torch.int64,
+                        device=self.device,
+                    )
+                ]
         else:
-            output = [
-                torch.full(
-                    (batch_size,),
-                    fill_value=self.sos_id,
-                    dtype=torch.int64,
-                    device=self.device,
-                )
-            ]
+            # In vqvae case, there is no sos symbol, since all words come from the unordered embedding table.
+            output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
 
         # Keep track of sequence lengths
         initial_length = self.output_len + 1  # add the sos token
         seq_lengths = (
             torch.ones([batch_size], dtype=torch.int64, device=self.device) * initial_length
-        )
+        ) # [initial_length, initial_length, ..., initial_length]. This gets reduced whenever it ends somewhere.
 
         embeds = []  # keep track of the embedded sequence
         entropy = 0.0
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
 
         for i in range(self.output_len):
-            if self.training:
+            if self.training or self.vqvae:
                 emb = torch.matmul(output[-1], self.embedding)
             else:
                 emb = self.embedding[output[-1]]
@@ -179,31 +198,37 @@ class ShapesSender(nn.Module):
             else:
                 h = state
 
-            p = F.softmax(self.linear_out(h), dim=1)
-            entropy += Categorical(p).entropy()
+            if not self.vqvae:
+                p = F.softmax(self.linear_out(h), dim=1)
+                entropy += Categorical(p).entropy()
 
-            if self.training:
-                token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
-            else:
-                sentence_probability += p.detach()
-
-                if self.greedy:
-                    _, token = torch.max(p, -1)
+                if self.training:
+                    token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
                 else:
-                    token = Categorical(p).sample()
+                    sentence_probability += p.detach()
 
-                if batch_size == 1:
-                    token = token.unsqueeze(0)
+                    if self.greedy:
+                        _, token = torch.max(p, -1)
+                    else:
+                        token = Categorical(p).sample()
+
+                    if batch_size == 1:
+                        token = token.unsqueeze(0)
+                self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
+            else:
+                pre_quant = self.linear_out(h)
+                token = self.vq(pre_quant, self.e)
 
             output.append(token)
-            self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
 
         messages = torch.stack(output, dim=1)
+        entropy_out = torch.mean(entropy) / self.output_len
+
 
         return (
             messages,
             seq_lengths,
-            torch.mean(entropy) / self.output_len,
+            entropy_out,
             torch.stack(embeds, dim=1),
             sentence_probability,
         )
