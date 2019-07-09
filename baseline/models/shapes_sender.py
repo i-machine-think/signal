@@ -57,7 +57,7 @@ class ShapesSender(nn.Module):
         )
 
         self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
-        
+
         if reset_params:
             self.reset_parameters()
 
@@ -186,7 +186,7 @@ class ShapesSender(nn.Module):
                 token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
             else:
                 sentence_probability += p.detach()
-                
+
                 if self.greedy:
                     _, token = torch.max(p, -1)
                 else:
@@ -199,7 +199,7 @@ class ShapesSender(nn.Module):
             self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
 
         messages = torch.stack(output, dim=1)
-        
+
         return (
             messages,
             seq_lengths,

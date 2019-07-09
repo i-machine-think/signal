@@ -20,12 +20,10 @@ def parse_arguments(args):
     parser = argparse.ArgumentParser(
         description="Training Sender/Receiver Agent on a task"
     )
-    parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)
     parser.add_argument("--single-model",help="Use a single model (default: False)",action="store_true",)
     parser.add_argument("--dataset-type",type=str,default="raw",metavar="S",help="type of input used by dataset pick from raw/features/meta (default features)",)
     parser.add_argument("--greedy",help="Use argmax at prediction time instead of sampling (default: False)",action="store_true",)
     parser.add_argument("--iterations",type=int,default=10000,metavar="N",help="number of batch iterations to train (default: 10k)",)
-    parser.add_argument("--log-interval",type=int,default=200,metavar="N",help="number of iterations between logs (default: 200)",)
     parser.add_argument("--seed", type=int, default=42, metavar="S", help="random seed (default: 42)")
     parser.add_argument("--embedding-size",type=int,default=64,metavar="N",help="embedding size for embedding layer (default: 64)",)
     parser.add_argument("--hidden-size",type=int,default=64,metavar="N",help="hidden size for hidden layer (default: 64)",)
@@ -36,8 +34,6 @@ def parse_arguments(args):
     parser.add_argument("--darts",help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",action="store_true",default=False,)
     parser.add_argument("--num-nodes",type=int,default=4,metavar="N",help="Size of darts cell to use with random-darts (default: 4)",)
     parser.add_argument("--lr",type=float,default=1e-3,metavar="N",help="Adam learning rate (default: 1e-3)",)
-    parser.add_argument("--sender-path",type=str,default=False,metavar="S",help="Sender to be loaded",)
-    parser.add_argument("--receiver-path",type=str,default=False,metavar="S",help="Receiver to be loaded",)
     parser.add_argument("--freeze-sender",help="Freeze sender weights (do not train) ",action="store_true",)
     parser.add_argument("--freeze-receiver",help="Freeze receiver weights (do not train) ",action="store_true",)
     parser.add_argument("--obverter-setup",help="Enable obverter setup with shapes",action="store_true",)
@@ -47,6 +43,10 @@ def parse_arguments(args):
     parser.add_argument("--multi-task-lambda",type=float,default=0.5,help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",)
 
     # Arguments not specific to the training process itself
+    parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)
+    parser.add_argument("--log-interval",type=int,default=200,metavar="N",help="number of iterations between logs (default: 200)",)
+    parser.add_argument("--sender-path",type=str,default=False,metavar="S",help="Sender to be loaded",)
+    parser.add_argument("--receiver-path",type=str,default=False,metavar="S",help="Receiver to be loaded",)
     parser.add_argument("--name",type=str,default=False,metavar="S",help="Name to append to run file name",)
     parser.add_argument("--folder",type=str,default=False,metavar="S",help="Additional folder within runs/",)
     parser.add_argument("--disable-print",help="Disable printing", action="store_true")
@@ -263,6 +263,7 @@ def baseline(args):
         for train_batch in train_data:
             print(f'{iteration}/{args.iterations}       \r', end='')
 
+            ### !!! This is the complete training procedure. Rest is only logging!
             _, _ = train_helper.train_one_batch(
                 model, train_batch, optimizer, train_meta_data, device, args.inference_step, args.multi_task)
 
@@ -278,20 +279,20 @@ def baseline(args):
                 else:
                     average_valid_accuracy = valid_acc_meter.avg
 
-                if average_valid_accuracy < best_accuracy:
+                if average_valid_accuracy < best_accuracy: # No new best found. May lead to early stopping
                     current_patience -= 1
 
                     if current_patience <= 0:
                         print('Model has converged. Stopping training...')
                         converged = True
                         break
-                else:
+                else: # new best found. Is saved.
                     new_best = True
                     best_accuracy = average_valid_accuracy
                     current_patience = args.patience
                     save_model_state(model, model_path, epoch, iteration, best_accuracy)
 
-                # Skip for now
+                # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
                 if not args.disable_print:
                     if args.multi_task:
                         print(log_template.format(

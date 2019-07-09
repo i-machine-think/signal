@@ -33,7 +33,7 @@ class TrainHelper():
             md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
         else:
             md = None
-            
+
         loss, losses, accuracies, _ = model.forward(target, distractors, md)
 
         loss.backward()
@@ -42,7 +42,7 @@ class TrainHelper():
         return losses, accuracies
 
     def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, multi_task, step3):
-        
+
         if multi_task:
             loss_meter = [AverageEnsembleMeter(5), AverageMeter()]
             acc_meter = [AverageEnsembleMeter(5), AverageMeter()]
@@ -58,7 +58,7 @@ class TrainHelper():
         model.eval()
         for batch in dataloader:
             target, distractors, indices, lkey = batch
-            
+
             if inference_step or multi_task:
                 vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
             else:
@@ -124,7 +124,7 @@ class TrainHelper():
             name += "_multi"
             if params.multi_task_lambda:
                 name += f'_lambda_{params.multi_task_lambda}'
-            
+
         return name
 
     def seed_torch(self, seed=42):
