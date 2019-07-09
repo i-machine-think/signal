@@ -13,13 +13,15 @@ class ShapesReceiver(nn.Module):
         hidden_size=512,
         cell_type="lstm",
         genotype=None,
-        dataset_type="meta"):
+        dataset_type="meta",
+        vqvae=False):
         super().__init__()
 
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.cell_type = cell_type
         self.device = device
+        self.vqvae = vqvae
 
         # This is only used when not training using raw data
         # self.input_module = ShapesMetaVisualModule(
@@ -59,11 +61,9 @@ class ShapesReceiver(nn.Module):
 
         emb = (
             torch.matmul(messages, self.embedding)
-            if self.training
+            if self.training or self.vqvae
             else self.embedding[messages]
         )
-
-        # emb = self.embedding.forward(messages)
 
         # initialize hidden
         h = torch.zeros([batch_size, self.hidden_size], device=self.device)
@@ -72,7 +72,7 @@ class ShapesReceiver(nn.Module):
             h = (h, c)
 
         # make sequence_length be first dim
-        seq_iterator = emb.transpose(0, 1)
+        seq_iterator = emb.transpose(0, 1) # size: seq_length x output_length x embedding_size
         for w in seq_iterator:
             h = self.rnn(w, h)
 
