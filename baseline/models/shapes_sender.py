@@ -26,8 +26,8 @@ class ShapesSender(nn.Module):
         reset_params=True,
         inference_step=False,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
-        discrete_latent_number=25 # Number of embedding vectors e_i in embedding table in vqvae setting
-        ):
+        discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
+        beta=0.25 # Weighting of loss terms 2 and 3 in VQ-VAE):
 
         super().__init__()
         self.vocab_size = vocab_size
@@ -73,6 +73,7 @@ class ShapesSender(nn.Module):
                 torch.empty((self.discrete_latent_number, self.vocab_size), dtype=torch.float32)
             ) # The discrete embedding table
             self.vq = VectorQuantization()
+        self.beta=beta
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
@@ -142,7 +143,6 @@ class ShapesSender(nn.Module):
             mask = token == self.eos_id
 
         mask *= seq_lengths == initial_length
-        import pdb; pdb.set_trace()
         seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended. This tells the sequence to be smaller at the positions where the sentence already ended.
 
     def forward(self, tau=1.2, hidden_state=None):
@@ -182,6 +182,7 @@ class ShapesSender(nn.Module):
         embeds = []  # keep track of the embedded sequence
         entropy = 0.0
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
+        losses_2_3 = torch.empty(self.output_len)
 
         for i in range(self.output_len):
             if self.training or self.vqvae:
@@ -217,12 +218,14 @@ class ShapesSender(nn.Module):
                 self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
             else:
                 pre_quant = self.linear_out(h)
-                token = self.vq(pre_quant, self.e)
+                token, loss_2_3 = self.vq(pre_quant, self.e, self.beta)
 
             output.append(token)
+            losses_2_3[i] = loss_2_3
 
         messages = torch.stack(output, dim=1)
         entropy_out = torch.mean(entropy) / self.output_len
+        loss_2_3_out = torch.mean(losses_2_3)
 
 
         return (
@@ -231,4 +234,5 @@ class ShapesSender(nn.Module):
             entropy_out,
             torch.stack(embeds, dim=1),
             sentence_probability,
+            loss_2_3_out
         )
