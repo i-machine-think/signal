@@ -12,7 +12,7 @@ class VectorQuantization(torch.autograd.Function):
     Implementation adapted from https://github.com/ritheshkumar95/pytorch-vqvae/blob/master/functions.py.
     """
     @staticmethod
-    def forward(ctx, pre_quant, e, beta):
+    def forward(ctx, pre_quant, e, beta, indices):
         # Use ||a - b||^2 = ||a||^2 + ||b||^2 - 2ab for computation of distances.
         # Square computation:
         e_sq = torch.sum(e ** 2, dim=1)
@@ -22,14 +22,10 @@ class VectorQuantization(torch.autograd.Function):
         distances = torch.addmm(e_sq + pre_quant_sq,
             pre_quant, e.t(), alpha=-2.0, beta=1.0)
 
-        _, indices_flatten = torch.min(distances, dim=1) # indices_flatten lists, for each vector in the batch pre_quant, the index of the closest codeword
+        _, indices[:] = torch.min(distances, dim=1) # indices lists, for each vector in the batch pre_quant, the index of the closest codeword
 
-        loss_2 = torch.mean(torch.norm(pre_quant.detach() - e[indices], dim=1)**2)
-        loss_3 = torch.mean(torch.norm(pre_quant - e[indices].detach(), dim=1)**2)
-        loss_2_3 = loss_2 + beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
-
-        return e[indices], loss_2_3
+        return e[indices]
 
     @staticmethod
-    def backward(ctx, grad_out):
-        return grad_out
+    def backward(ctx, grad_e):
+        return grad_e, None, None, None

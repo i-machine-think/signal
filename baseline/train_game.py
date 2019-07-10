@@ -148,7 +148,7 @@ def baseline(args):
 
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
-    torch.save(sender, sender_file)
+    #torch.save(sender, sender_file)
 
     if baseline_receiver:
         torch.save(baseline_receiver, receiver_file)
@@ -162,7 +162,9 @@ def baseline(args):
         args.dataset_type,
         args.step3,
         baseline_receiver=baseline_receiver,
-        diagnostic_receiver=diagnostic_receiver)
+        diagnostic_receiver=diagnostic_receiver,
+        vqvae=args.vqvae,
+        beta=args.beta)
 
     model_path = file_helper.create_unique_model_path(model_name)
 

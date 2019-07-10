@@ -64,22 +64,22 @@ class ShapesSender(nn.Module):
         self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
         self.vqvae = vqvae
 
-        if reset_params:
-            self.reset_parameters()
-
         if self.vqvae:
             self.discrete_latent_number = discrete_latent_number
-
             self.e = nn.Parameter(
                 torch.empty((self.discrete_latent_number, self.vocab_size), dtype=torch.float32)
             ) # The discrete embedding table
             self.vq = VectorQuantization()
+
+        if reset_params:
+            self.reset_parameters()
+
         self.beta=beta
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
-        nn.init.constant_(self.linear_out.weight, 0)
-        nn.init.constant_(self.linear_out.bias, 0)
+        #nn.init.constant_(self.linear_out.weight, 0)
+        #nn.init.constant_(self.linear_out.bias, 0)
         if self.vqvae:
             nn.init.normal_(self.e, 0.0, 0.1)
 
@@ -219,13 +219,17 @@ class ShapesSender(nn.Module):
                 self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
             else:
                 pre_quant = self.linear_out(h)
-                token, loss_2_3 = self.vq(pre_quant, self.e, self.beta)
-                losses_2_3[i] = loss_2_3
+                indices = [None] * batch_size
+                token = self.vq.apply(pre_quant, self.e, self.beta, indices)
 
+                loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
+                loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)
+                loss_2_3 = loss_2 + self.beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
+                losses_2_3[i] = loss_2_3
             output.append(token)
 
         messages = torch.stack(output, dim=1)
-        entropy_out = torch.mean(entropy) / self.output_len
+        entropy_out = entropy / self.output_len
         loss_2_3_out = torch.mean(losses_2_3)
 
 

@@ -125,7 +125,9 @@ def get_trainer(
     dataset_type,
     step3,
     baseline_receiver = None,
-    diagnostic_receiver = None):
+    diagnostic_receiver = None,
+    vqvae=False,
+    beta=0.25):
     extract_features = dataset_type == "raw"
 
     return ShapesTrainer(
@@ -137,7 +139,9 @@ def get_trainer(
         step3,
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
-        extract_features=extract_features)
+        extract_features=extract_features,
+        vqvae=vqvae,
+        beta=beta)
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)
