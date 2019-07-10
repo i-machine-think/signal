@@ -27,7 +27,8 @@ class ShapesSender(nn.Module):
         inference_step=False,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
         discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
-        beta=0.25 # Weighting of loss terms 2 and 3 in VQ-VAE):
+        beta=0.25 # Weighting of loss terms 2 and 3 in VQ-VAE
+        ):
 
         super().__init__()
         self.vocab_size = vocab_size
@@ -219,9 +220,9 @@ class ShapesSender(nn.Module):
             else:
                 pre_quant = self.linear_out(h)
                 token, loss_2_3 = self.vq(pre_quant, self.e, self.beta)
+                losses_2_3[i] = loss_2_3
 
             output.append(token)
-            losses_2_3[i] = loss_2_3
 
         messages = torch.stack(output, dim=1)
         entropy_out = torch.mean(entropy) / self.output_len

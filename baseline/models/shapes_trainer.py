@@ -62,8 +62,6 @@ class ShapesTrainer(nn.Module):
             # fill in the rest of message with eos
             messages = messages.masked_fill_(mask == 0, self.sender.eos_id)
 
-        import pdb; pdb.set_trace()
-
         return messages
 
     def forward(self, target, distractors, meta_data = None):
@@ -158,7 +156,7 @@ class ShapesTrainer(nn.Module):
 
             baseline_loss = baseline_mean_loss.item()
 
-            if not self.multi_task:        
+            if not self.multi_task:
                 return baseline_mean_loss, baseline_loss, baseline_accuracy, messages
 
             final_loss += (1 - self.multi_task_lambda) * baseline_mean_loss
