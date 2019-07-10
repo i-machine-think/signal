@@ -22,7 +22,9 @@ class ShapesTrainer(nn.Module):
             step3,
             baseline_receiver: ShapesReceiver = None,
             diagnostic_receiver: MessagesReceiver = None,
-            extract_features=False):
+            extract_features=False,
+            vqvae=False,
+            beta=0.25):
         super().__init__()
 
         self.sender = sender
@@ -34,11 +36,12 @@ class ShapesTrainer(nn.Module):
             self.visual_module = ShapesCNN(sender.hidden_size)
 
         self.device = device
-
+        self.vqvae = vqvae
         self.inference_step = inference_step
         self.step3 = step3
         self.multi_task = multi_task
         self.multi_task_lambda = multi_task_lambda
+        self.vqvae = vqvae
 
     def _pad(self, messages, seq_lengths):
         """
@@ -59,6 +62,8 @@ class ShapesTrainer(nn.Module):
             # fill in the rest of message with eos
             messages = messages.masked_fill_(mask == 0, self.sender.eos_id)
 
+        import pdb; pdb.set_trace()
+
         return messages
 
     def forward(self, target, distractors, meta_data = None):
@@ -71,13 +76,14 @@ class ShapesTrainer(nn.Module):
             target = self.visual_module(target)  # This is the "f" function in the paper! No eta exists.
             distractors = [self.visual_module(d) for d in distractors]
 
-        messages, lengths, _, _, _ = self.sender.forward(
-            hidden_state=target) # The first hidden state is the target, as in paper.
+        messages, lengths, _, _, _, loss_2_3 = self.sender.forward(
+            hidden_state=target) # The first hidden state is the target, as in Referential Games paper.
 
-        messages = self._pad(messages, lengths) # If I understand correctly: After eos happens the first time, all later words in message are eos as well.
+        if not self.vqvae:
+            messages = self._pad(messages, lengths) # If I understand correctly: After eos happens the first time, all later words in message are eos as well.
 
         if not self.diagnostic_receiver and not self.baseline_receiver:
-            return messages # if now receiver given, just give out messages
+            return messages
 
         final_loss = 0
         if self.inference_step or self.multi_task:
@@ -145,10 +151,14 @@ class ShapesTrainer(nn.Module):
 
             baseline_accuracy = torch.mean(accuracy).item()
             baseline_mean_loss = torch.mean(baseline_loss) # without item, since it will be backpropagated
+
+            if self.vqvae:
+                # In the vqvae case, we add loss_2_3
+                baseline_mean_loss += loss_2_3
+
             baseline_loss = baseline_mean_loss.item()
 
-            if not self.multi_task:
-                # print(type(baseline_mean_loss), type(baseline_loss), type(baseline_accuracy))
+            if not self.multi_task:        
                 return baseline_mean_loss, baseline_loss, baseline_accuracy, messages
 
             final_loss += (1 - self.multi_task_lambda) * baseline_mean_loss
