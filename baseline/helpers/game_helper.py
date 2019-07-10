@@ -60,7 +60,9 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             cell_type=cell_type,
             genotype=genotype,
             dataset_type=args.dataset_type,
-            inference_step=args.inference_step
+            inference_step=args.inference_step,
+            vqvae=args.vqvae,
+            beta=args.beta
         )
 
         if not args.inference_step or args.multi_task:
@@ -72,6 +74,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
                 cell_type=cell_type,
                 genotype=genotype,
                 dataset_type=args.dataset_type,
+                vqvae=args.vqvae
             )
 
     if args.inference_step or args.multi_task:
