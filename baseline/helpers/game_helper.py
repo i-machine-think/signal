@@ -62,7 +62,8 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             dataset_type=args.dataset_type,
             inference_step=args.inference_step,
             vqvae=args.vqvae,
-            beta=args.beta
+            beta=args.beta,
+            discrete_latent_number=args.discrete_latent_number
         )
 
         if not args.inference_step or args.multi_task:

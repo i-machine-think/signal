@@ -3,6 +3,8 @@ import torch.nn as nn
 from torch.distributions.categorical import Categorical
 from torch.nn import functional as F
 
+import numpy as np
+
 from .shapes_meta_visual_module import ShapesMetaVisualModule
 from .darts_cell import DARTSCell
 from .vector_quantization import VectorQuantization
@@ -26,7 +28,7 @@ class ShapesSender(nn.Module):
         reset_params=True,
         inference_step=False,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
-        discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
+        discrete_latent_number=3, # Number of embedding vectors e_i in embedding table in vqvae setting
         beta=0.25 # Weighting of loss terms 2 and 3 in VQ-VAE
         ):
 
@@ -220,9 +222,9 @@ class ShapesSender(nn.Module):
             else:
                 pre_quant = self.linear_out(h)
                 indices = [None] * batch_size
-                print(indices)
                 token = self.vq.apply(pre_quant, self.e, indices)
-                print(indices)
+                print_indices = [0, 1, 2]
+                print(np.array(indices)[print_indices])
 
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
                 loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)

@@ -23,8 +23,7 @@ class ShapesTrainer(nn.Module):
             baseline_receiver: ShapesReceiver = None,
             diagnostic_receiver: MessagesReceiver = None,
             extract_features=False,
-            vqvae=False,
-            beta=0.25):
+            vqvae=False):
         super().__init__()
 
         self.sender = sender
