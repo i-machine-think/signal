@@ -163,8 +163,7 @@ def baseline(args):
         args.step3,
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
-        vqvae=args.vqvae,
-        beta=args.beta)
+        vqvae=args.vqvae)
 
     model_path = file_helper.create_unique_model_path(model_name)
 

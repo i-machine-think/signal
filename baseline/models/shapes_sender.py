@@ -220,7 +220,9 @@ class ShapesSender(nn.Module):
             else:
                 pre_quant = self.linear_out(h)
                 indices = [None] * batch_size
-                token = self.vq.apply(pre_quant, self.e, self.beta, indices)
+                print(indices)
+                token = self.vq.apply(pre_quant, self.e, indices)
+                print(indices)
 
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
                 loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)

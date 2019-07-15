@@ -41,7 +41,6 @@ class ShapesTrainer(nn.Module):
         self.step3 = step3
         self.multi_task = multi_task
         self.multi_task_lambda = multi_task_lambda
-        self.vqvae = vqvae
 
     def _pad(self, messages, seq_lengths):
         """

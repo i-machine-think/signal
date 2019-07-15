@@ -6,13 +6,12 @@ class VectorQuantization(torch.autograd.Function):
     """
     A function that compares the input of the forward pass to the embedding table.
     returns the closest embedding vector.
-    Furthermore returns a loss-term: ||sg(pre_quant) - e||^2 + beta*||pre_quant - sg(e)||^2
     Backward pass is straight-through.
     Inspired by VQ-VAE (van den Oord et al., 2018).
     Implementation adapted from https://github.com/ritheshkumar95/pytorch-vqvae/blob/master/functions.py.
     """
     @staticmethod
-    def forward(ctx, pre_quant, e, beta, indices):
+    def forward(ctx, pre_quant, e, indices):
         # Use ||a - b||^2 = ||a||^2 + ||b||^2 - 2ab for computation of distances.
         # Square computation:
         e_sq = torch.sum(e ** 2, dim=1)
@@ -28,4 +27,4 @@ class VectorQuantization(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_e):
-        return grad_e, None, None, None
+        return grad_e, None, None
