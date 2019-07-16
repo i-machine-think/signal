@@ -16,7 +16,12 @@
 
 python3 -u baseline/train_game.py \
 	--device cpu \
-	--seed 114 \
+	--seed 2 \
 	--iterations 30000 \
 	--log-interval 10 \
+	--vqvae \
+	--beta 0.25 \
 	--vocab-size 25 \
+	--discrete_latent_number 25 \
+	--discrete_latent_dimension 25 \
+	--discrete_communication

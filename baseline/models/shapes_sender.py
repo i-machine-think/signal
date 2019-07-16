@@ -76,24 +76,23 @@ class ShapesSender(nn.Module):
         else:
             self.linear_out = nn.Linear(hidden_size, discrete_latent_dimension)
         self.vqvae = vqvae
+        self.discrete_latent_number = discrete_latent_number
+        self.discrete_latent_dimension = discrete_latent_dimension
+        self.discrete_communication=discrete_communication
+        self.beta=beta
+        self.gumbel_softmax=gumbel_softmax
 
         if self.vqvae:
-            self.discrete_latent_number = discrete_latent_number
-            self.discrete_latent_dimension = discrete_latent_dimension
             self.e = nn.Parameter(
                 torch.empty((self.discrete_latent_number, self.discrete_latent_dimension), dtype=torch.float32)
             ) # The discrete embedding table
             print("the shape of e is {}".format(self.e.shape))
             self.vq = VectorQuantization()
-            self.discrete_communication=discrete_communication
             if self.discrete_communication:
                 self.hard_max = HardMax()
 
         if reset_params:
             self.reset_parameters()
-
-        self.beta=beta
-        self.gumbel_softmax=sumbel_softmax
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
@@ -165,7 +164,7 @@ class ShapesSender(nn.Module):
         mask *= seq_lengths == initial_length
         seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended. This tells the sequence to be smaller at the positions where the sentence already ended.
 
-    def calculate_token_gumbel_softmax(p, tau):
+    def calculate_token_gumbel_softmax(self, p, tau, sentence_probability, batch_size):
         if self.training:
             token = self.utils_helper.calculate_gumbel_softmax(p, tau, hard=True)
         else:
@@ -178,7 +177,7 @@ class ShapesSender(nn.Module):
 
             if batch_size == 1:
                 token = token.unsqueeze(0)
-        return token
+        return token, sentence_probability
 
     def forward(self, tau=1.2, hidden_state=None):
         """
@@ -240,7 +239,7 @@ class ShapesSender(nn.Module):
             if not self.vqvae:
                 p = F.softmax(self.linear_out(h), dim=1)
                 entropy += Categorical(p).entropy()
-                token = self.calculate_token_gumbel_softmax(p, tau)
+                token, sentence_probability = self.calculate_token_gumbel_softmax(p, tau, sentence_probability, batch_size)
                 self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
             else:
                 pre_quant = self.linear_out(h)
@@ -256,7 +255,7 @@ class ShapesSender(nn.Module):
                     if not self.gumbel_softmax:
                         token = self.hard_max.apply(softmin, indices, self.discrete_latent_number) # This also updates the indices
                     else:
-                        token = self.calculate_token_gumbel_softmax(softmin, tau)
+                        token, _ = self.calculate_token_gumbel_softmax(softmin, tau, 0, batch_size)
                     #print_indices = [0, 1, 2]
                     #print(np.array(indices)[print_indices])
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
