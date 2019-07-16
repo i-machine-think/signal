@@ -46,6 +46,7 @@ def parse_arguments(args):
     parser.add_argument("--discrete_latent_number",type=int,default=25,help="Number of embedding vectors in the VQ-VAE case",)
     parser.add_argument("--discrete_latent_dimension",type=int,default=25,help="dimension of embedding vectors in the VQ-VAE case",)
     parser.add_argument("--discrete_communication",help="switch for communicating discretely in the vqvae case",action="store_true",)
+    parser.add_argument("--gumbel_softmax",help="switch for using straight-through gumbel_softmax in the vqvae-discrete_communication case",action="store_true",)
 
     # Arguments not specific to the training process itself
     parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)

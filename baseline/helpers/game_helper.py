@@ -65,7 +65,8 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             beta=args.beta,
             discrete_latent_number=args.discrete_latent_number,
             discrete_latent_dimension=args.discrete_latent_dimension,
-            discrete_communication=args.discrete_communication
+            discrete_communication=args.discrete_communication,
+            gumbel_softmax=args.gumbel_softmax
         )
 
         if not args.inference_step or args.multi_task:
