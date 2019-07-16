@@ -44,6 +44,7 @@ def parse_arguments(args):
     parser.add_argument("--vqvae",help="switch for using vector quantization (default:False)",action="store_true")
     parser.add_argument("--beta",type=float,default=0.25,help="weighting factor for los-terms 2 and 3 in VQ-VAE",)
     parser.add_argument("--discrete_latent_number",type=int,default=25,help="Number of embedding vectors in the VQ-VAE case!")
+    parser.add_argument("--discrete_communication",help="switch for communicating discretely in the vqvae case",action="store_true")
 
     # Arguments not specific to the training process itself
     parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)

@@ -7,7 +7,7 @@ import numpy as np
 
 from .shapes_meta_visual_module import ShapesMetaVisualModule
 from .darts_cell import DARTSCell
-from .vector_quantization import VectorQuantization
+from .vector_quantization import VectorQuantization, EmbeddingtableDistances, HardMax
 
 from helpers.utils_helper import UtilsHelper
 
@@ -28,8 +28,9 @@ class ShapesSender(nn.Module):
         reset_params=True,
         inference_step=False,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
-        discrete_latent_number=3, # Number of embedding vectors e_i in embedding table in vqvae setting
-        beta=0.25 # Weighting of loss terms 2 and 3 in VQ-VAE
+        discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
+        beta=0.25, # Weighting of loss terms 2 and 3 in VQ-VAE
+        discrete_communication=False
         ):
 
         super().__init__()
@@ -71,12 +72,16 @@ class ShapesSender(nn.Module):
             self.e = nn.Parameter(
                 torch.empty((self.discrete_latent_number, self.vocab_size), dtype=torch.float32)
             ) # The discrete embedding table
+            print("the shape of e is {}".format(self.e.shape))
             self.vq = VectorQuantization()
+            if self.discrete_communication:
+                self.hard_max = HardMax()
 
         if reset_params:
             self.reset_parameters()
 
         self.beta=beta
+        self.discrete_communication=discrete_communication
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
@@ -187,6 +192,9 @@ class ShapesSender(nn.Module):
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
         losses_2_3 = torch.empty(self.output_len)
 
+        if self.discrete_communication:
+            distance_computer = EmbeddingtableDistances(self.e)
+
         for i in range(self.output_len):
             if self.training or self.vqvae:
                 emb = torch.matmul(output[-1], self.embedding)
@@ -222,14 +230,21 @@ class ShapesSender(nn.Module):
             else:
                 pre_quant = self.linear_out(h)
                 indices = [None] * batch_size
-                token = self.vq.apply(pre_quant, self.e, indices)
-                print_indices = [0, 1, 2]
-                print(np.array(indices)[print_indices])
-
+                if not self.discrete_communication:
+                    token = self.vq.apply(pre_quant, self.e, indices)
+                    #print_indices = [0, 1, 2]
+                    #print(np.array(indices)[print_indices])
+                else:
+                    distances = distance_computer(pre_quant)
+                    softmin = F.softmax(-distances, dim=1)
+                    token = self.hard_max(softmin, indices) # This also updates the indices
+                    print_indices = [0, 1, 2]
+                    print(np.array(indices)[print_indices])
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
                 loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)
                 loss_2_3 = loss_2 + self.beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
                 losses_2_3[i] = loss_2_3
+
             output.append(token)
 
         messages = torch.stack(output, dim=1)
