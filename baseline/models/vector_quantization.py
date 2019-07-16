@@ -8,7 +8,7 @@ class HardMax(torch.autograd.Function):
     With straight-through gradient.
     """
     @staticmethod
-    def forward(ctx, softmax):
+    def forward(ctx, softmax, max_indices):
 
         # this utils function is taken from https://discuss.pytorch.org/t/convert-int-into-one-hot-format/507/23
         def to_one_hot(y, n_dims=None):
@@ -20,7 +20,7 @@ class HardMax(torch.autograd.Function):
             y_one_hot = y_one_hot.view(*y.shape, -1)
             return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
 
-        _, max_indices = torch.max(softmax, dim=1)
+        _, max_indices[:] = torch.max(softmax, dim=1)
         hard_max = to_one_hot(max_indices)
 
         return hard_max
