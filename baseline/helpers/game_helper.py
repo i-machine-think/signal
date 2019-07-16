@@ -64,6 +64,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             vqvae=args.vqvae,
             beta=args.beta,
             discrete_latent_number=args.discrete_latent_number,
+            discrete_latent_dimension=args.discrete_latent_dimension,
             discrete_communication=args.discrete_communication
         )
 

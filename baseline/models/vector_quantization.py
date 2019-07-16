@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.nn import Functional as F
+from torch.nn import functional as F
+from torch.autograd import Variable
 
 class HardMax(torch.autograd.Function):
     """
@@ -8,7 +9,7 @@ class HardMax(torch.autograd.Function):
     With straight-through gradient.
     """
     @staticmethod
-    def forward(ctx, softmax, max_indices):
+    def forward(ctx, softmax, max_indices, n_dims):
 
         # this utils function is taken from https://discuss.pytorch.org/t/convert-int-into-one-hot-format/507/23
         def to_one_hot(y, n_dims=None):
@@ -21,13 +22,15 @@ class HardMax(torch.autograd.Function):
             return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
 
         _, max_indices[:] = torch.max(softmax, dim=1)
-        hard_max = to_one_hot(max_indices)
+        hard_max = to_one_hot(torch.Tensor(max_indices), n_dims)
 
         return hard_max
 
     @staticmethod
     def backward(ctx, grad_hard_max):
-        return grad_hard_max
+        return grad_hard_max, None, None
+
+
 
 class VectorQuantization(torch.autograd.Function):
     """
@@ -50,10 +53,12 @@ class VectorQuantization(torch.autograd.Function):
     def backward(ctx, grad_e):
         return grad_e, None, None
 
+
+
 class EmbeddingtableDistances(nn.Module):
     def __init__(self, e):
         super().__init__()
-        self.e = e # The embedding table from VQ-VAE
+        self.register_buffer('e', e) # The embedding table from VQ-VAE
 
     def forward(self, pre_quant):
         # Use ||a - b||^2 = ||a||^2 + ||b||^2 - 2ab for computation of distances.

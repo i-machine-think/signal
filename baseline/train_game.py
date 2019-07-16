@@ -39,12 +39,13 @@ def parse_arguments(args):
     parser.add_argument("--obverter-setup",help="Enable obverter setup with shapes",action="store_true",)
     parser.add_argument("--inference-step",action="store_true",help="Use inference step receiver model",)
     parser.add_argument("--step3",help="Run with property specific distractors",action="store_true",)
-    parser.add_argument("--multi-task",help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",action="store_true")
+    parser.add_argument("--multi-task",help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",action="store_true",)
     parser.add_argument("--multi-task-lambda",type=float,default=0.5,help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",)
-    parser.add_argument("--vqvae",help="switch for using vector quantization (default:False)",action="store_true")
-    parser.add_argument("--beta",type=float,default=0.25,help="weighting factor for los-terms 2 and 3 in VQ-VAE",)
-    parser.add_argument("--discrete_latent_number",type=int,default=25,help="Number of embedding vectors in the VQ-VAE case!")
-    parser.add_argument("--discrete_communication",help="switch for communicating discretely in the vqvae case",action="store_true")
+    parser.add_argument("--vqvae",help="switch for using vector quantization (default:False)",action="store_true",)
+    parser.add_argument("--beta",type=float,default=0.25,help="weighting factor for loss-terms 2 and 3 in VQ-VAE",)
+    parser.add_argument("--discrete_latent_number",type=int,default=25,help="Number of embedding vectors in the VQ-VAE case",)
+    parser.add_argument("--discrete_latent_dimension",type=int,default=25,help="dimension of embedding vectors in the VQ-VAE case",)
+    parser.add_argument("--discrete_communication",help="switch for communicating discretely in the vqvae case",action="store_true",)
 
     # Arguments not specific to the training process itself
     parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)
@@ -53,11 +54,11 @@ def parse_arguments(args):
     parser.add_argument("--receiver-path",type=str,default=False,metavar="S",help="Receiver to be loaded",)
     parser.add_argument("--name",type=str,default=False,metavar="S",help="Name to append to run file name",)
     parser.add_argument("--folder",type=str,default=False,metavar="S",help="Additional folder within runs/",)
-    parser.add_argument("--disable-print",help="Disable printing", action="store_true")
-    parser.add_argument("--device",type=str,help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+    parser.add_argument("--disable-print",help="Disable printing", action="store_true",)
+    parser.add_argument("--device",type=str,help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done",)
     parser.add_argument("--patience",type=int,default=10,help="Amount of epochs to check for not improved validation score before early stopping",)
-    parser.add_argument("--test-mode",help="Only run the saved model on the test set",action="store_true")
-    parser.add_argument("--resume-training",help="Resume the training from the saved model state",action="store_true")
+    parser.add_argument("--test-mode",help="Only run the saved model on the test set",action="store_true",)
+    parser.add_argument("--resume-training",help="Resume the training from the saved model state",action="store_true",)
 
     args = parser.parse_args(args)
 
@@ -128,7 +129,6 @@ def load_model_state(model, model_path):
 
 
 def baseline(args):
-
     args = parse_arguments(args)
 
     if args.device:

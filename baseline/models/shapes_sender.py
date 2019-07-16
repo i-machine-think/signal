@@ -29,11 +29,17 @@ class ShapesSender(nn.Module):
         inference_step=False,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
         discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
+        discrete_latent_dimension=25, #dimension of embedding vectors
         beta=0.25, # Weighting of loss terms 2 and 3 in VQ-VAE
         discrete_communication=False
         ):
 
         super().__init__()
+        if vqvae:
+            if discrete_communication==False:
+                assert vocab_size==discrete_latent_dimension, "When using continuous communication, vocab_size = discrete_latent_dimension"
+            else:
+                assert vocab_size==discrete_latent_number, "When using discrete communication, vocab_size = discrete_latent_number"
         self.vocab_size = vocab_size
         self.cell_type = cell_type
         self.output_len = output_len
@@ -64,16 +70,21 @@ class ShapesSender(nn.Module):
             torch.empty((vocab_size, embedding_size), dtype=torch.float32)
         )
 
-        self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
+        if not vqvae:
+            self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
+        else:
+            self.linear_out = nn.Linear(hidden_size, discrete_latent_dimension)
         self.vqvae = vqvae
 
         if self.vqvae:
             self.discrete_latent_number = discrete_latent_number
+            self.discrete_latent_dimension = discrete_latent_dimension
             self.e = nn.Parameter(
-                torch.empty((self.discrete_latent_number, self.vocab_size), dtype=torch.float32)
+                torch.empty((self.discrete_latent_number, self.discrete_latent_dimension), dtype=torch.float32)
             ) # The discrete embedding table
             print("the shape of e is {}".format(self.e.shape))
             self.vq = VectorQuantization()
+            self.discrete_communication=discrete_communication
             if self.discrete_communication:
                 self.hard_max = HardMax()
 
@@ -81,7 +92,6 @@ class ShapesSender(nn.Module):
             self.reset_parameters()
 
         self.beta=beta
-        self.discrete_communication=discrete_communication
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
@@ -230,6 +240,7 @@ class ShapesSender(nn.Module):
             else:
                 pre_quant = self.linear_out(h)
                 indices = [None] * batch_size
+
                 if not self.discrete_communication:
                     token = self.vq.apply(pre_quant, self.e, indices)
                     #print_indices = [0, 1, 2]
@@ -237,9 +248,9 @@ class ShapesSender(nn.Module):
                 else:
                     distances = distance_computer(pre_quant)
                     softmin = F.softmax(-distances, dim=1)
-                    token = self.hard_max(softmin, indices) # This also updates the indices
-                    print_indices = [0, 1, 2]
-                    print(np.array(indices)[print_indices])
+                    token = self.hard_max.apply(softmin, indices, self.discrete_latent_number) # This also updates the indices
+                    #print_indices = [0, 1, 2]
+                    #print(np.array(indices)[print_indices])
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
                 loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)
                 loss_2_3 = loss_2 + self.beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
