@@ -61,8 +61,6 @@ class ShapesReceiver(nn.Module):
 
         emb = (
             torch.matmul(messages, self.embedding)
-            if self.training or self.vqvae
-            else self.embedding[messages]
         )
 
         # initialize hidden

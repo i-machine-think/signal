@@ -50,15 +50,11 @@ class ShapesTrainer(nn.Module):
 
         mask = torch.arange(max_len, device=self.device).expand(len(seq_lengths), max_len) < seq_lengths.unsqueeze(1)
 
-        if self.training:
-            mask = mask.type(dtype=messages.dtype)
-            messages = messages * mask.unsqueeze(2)
+        mask = mask.type(dtype=messages.dtype)
+        messages = messages * mask.unsqueeze(2)
 
-            # give full probability (1) to eos tag (used as padding in this case)
-            messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
-        else:
-            # fill in the rest of message with eos
-            messages = messages.masked_fill_(mask == 0, self.sender.eos_id)
+        # give full probability (1) to eos tag (used as padding in this case)
+        messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
 
         return messages
 
