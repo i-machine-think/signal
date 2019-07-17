@@ -16,7 +16,7 @@
 
 python3 -u baseline/train_game.py \
 	--device cpu \
-	--seed 2 \
+	--seed 3 \
 	--iterations 30000 \
 	--log-interval 10 \
 	--vqvae \
@@ -25,4 +25,4 @@ python3 -u baseline/train_game.py \
 	--discrete_latent_number 25 \
 	--discrete_latent_dimension 25 \
 	--discrete_communication \
-	--gumbel_softmax
+#	--gumbel_softmax

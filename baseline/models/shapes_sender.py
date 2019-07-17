@@ -244,7 +244,6 @@ class ShapesSender(nn.Module):
                     else:
                         _, indices[:] = torch.max(softmin, dim=1)
                         token, _ = self.calculate_token_gumbel_softmax(softmin, tau, 0, batch_size)
-                        print(token)
                         #token = to_one_hot(token, n_dims=self.vocab_size)
                     #print_indices = [0, 1, 2]
                     #print(np.array(indices)[print_indices])
