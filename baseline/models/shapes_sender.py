@@ -174,6 +174,7 @@ class ShapesSender(nn.Module):
                 _, token = torch.max(p, -1)
             else:
                 token = Categorical(p).sample()
+            token = to_one_hot(token, n_dims=self.vocab_size)
 
             if batch_size == 1:
                 token = token.unsqueeze(0)
@@ -191,24 +192,11 @@ class ShapesSender(nn.Module):
 
         # Init output
         if not self.vqvae:
-            if self.training:
-                output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
-                output[0][:, self.sos_id] = 1.0
-            else:
-                output = [
-                    torch.full(
-                        (batch_size,),
-                        fill_value=self.sos_id,
-                        dtype=torch.int64,
-                        device=self.device,
-                    )
-                ]
+            output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
+            output[0][:, self.sos_id] = 1.0
         else:
-            # In vqvae case, there is no sos symbol, since all words come from the unordered embedding table.
-            if self.discrete_communication and self.gumbel_softmax and not self.training:
-                output = [torch.zeros((batch_size,), dtype=torch.int64, device=self.device)] #TODO: Change this, this gives zero the meaning of the sos symbol! Or need to integrate sos symbol in vqvae case! It's weird that it gets different input during validation compared with training!
-            else:
-                output = [torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
+            # In vqvae case, there is no sos symbol, since all words come from the unordered embedding table. TODO: Change that?
+            output = [torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
 
         # Keep track of sequence lengths
         initial_length = self.output_len + 1  # add the sos token
@@ -226,13 +214,7 @@ class ShapesSender(nn.Module):
 
         for i in range(self.output_len):
 
-
-            if self.training or (self.vqvae and not (self.discrete_communication and self.gumbel_softmax)):
-                emb = torch.matmul(output[-1], self.embedding)
-            else:
-                print(output[-1])
-                emb = self.embedding[output[-1]]
-
+            emb = torch.matmul(output[-1], self.embedding)
 
             embeds.append(emb)
 
