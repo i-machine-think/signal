@@ -96,8 +96,9 @@ class ShapesSender(nn.Module):
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding, 0.0, 0.1)
-        #nn.init.constant_(self.linear_out.weight, 0)
-        #nn.init.constant_(self.linear_out.bias, 0)
+        if not self.vqvae:
+            nn.init.constant_(self.linear_out.weight, 0)
+            nn.init.constant_(self.linear_out.bias, 0)
         if self.vqvae:
             nn.init.normal_(self.e, 0.0, 0.1)
 
