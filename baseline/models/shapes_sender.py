@@ -155,11 +155,8 @@ class ShapesSender(nn.Module):
                 initial_length (int): The max possible sequence length (output_len + n_sos_symbols).
                 seq_pos (int): The current timestep.
         """
-        if self.training:
-            max_predicted, vocab_index = torch.max(token, dim=1)
-            mask = (vocab_index == self.eos_id) * (max_predicted == 1.0) # all words in batch that are "already done"
-        else:
-            mask = token == self.eos_id
+        max_predicted, vocab_index = torch.max(token, dim=1)
+        mask = (vocab_index == self.eos_id) * (max_predicted == 1.0) # all words in batch that are "already done"
 
         mask *= seq_lengths == initial_length
         seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended. This tells the sequence to be smaller at the positions where the sentence already ended.
@@ -217,8 +214,6 @@ class ShapesSender(nn.Module):
             emb = torch.matmul(output[-1], self.embedding)
 
             embeds.append(emb)
-
-            print(emb.shape)
 
             state = self.rnn.forward(emb, state)
 
