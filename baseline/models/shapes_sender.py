@@ -7,7 +7,7 @@ import numpy as np
 
 from .shapes_meta_visual_module import ShapesMetaVisualModule
 from .darts_cell import DARTSCell
-from .vector_quantization import VectorQuantization, EmbeddingtableDistances, HardMax
+from .vector_quantization import to_one_hot, VectorQuantization, EmbeddingtableDistances, HardMax
 
 from helpers.utils_helper import UtilsHelper
 
@@ -205,7 +205,10 @@ class ShapesSender(nn.Module):
                 ]
         else:
             # In vqvae case, there is no sos symbol, since all words come from the unordered embedding table.
-            output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
+            if self.discrete_communication and self.gumbel_softmax and not self.training:
+                output = [torch.zeros((batch_size,), dtype=torch.int64, device=self.device)] #TODO: Change this, this gives zero the meaning of the sos symbol! Or need to integrate sos symbol in vqvae case! It's weird that it gets different input during validation compared with training!
+            else:
+                output = [torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
 
         # Keep track of sequence lengths
         initial_length = self.output_len + 1  # add the sos token
@@ -222,12 +225,18 @@ class ShapesSender(nn.Module):
             distance_computer = EmbeddingtableDistances(self.e)
 
         for i in range(self.output_len):
-            if self.training or self.vqvae:
+
+
+            if self.training or (self.vqvae and not (self.discrete_communication and self.gumbel_softmax)):
                 emb = torch.matmul(output[-1], self.embedding)
             else:
+                print(output[-1])
                 emb = self.embedding[output[-1]]
 
+
             embeds.append(emb)
+
+            print(emb.shape)
 
             state = self.rnn.forward(emb, state)
 
@@ -255,7 +264,10 @@ class ShapesSender(nn.Module):
                     if not self.gumbel_softmax:
                         token = self.hard_max.apply(softmin, indices, self.discrete_latent_number) # This also updates the indices
                     else:
+                        _, indices[:] = torch.max(softmin, dim=1)
                         token, _ = self.calculate_token_gumbel_softmax(softmin, tau, 0, batch_size)
+                        print(token)
+                        #token = to_one_hot(token, n_dims=self.vocab_size)
                     #print_indices = [0, 1, 2]
                     #print(np.array(indices)[print_indices])
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)

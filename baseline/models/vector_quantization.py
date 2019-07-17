@@ -3,6 +3,16 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.autograd import Variable
 
+# this utils function is taken from https://discuss.pytorch.org/t/convert-int-into-one-hot-format/507/23
+def to_one_hot(y, n_dims=None):
+    """ Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims. """
+    y_tensor = y.data if isinstance(y, Variable) else y
+    y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
+    n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
+    y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
+    y_one_hot = y_one_hot.view(*y.shape, -1)
+    return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
+
 class HardMax(torch.autograd.Function):
     """
     Takes a softmax vector and returns the hard max.
@@ -10,16 +20,6 @@ class HardMax(torch.autograd.Function):
     """
     @staticmethod
     def forward(ctx, softmax, max_indices, n_dims):
-
-        # this utils function is taken from https://discuss.pytorch.org/t/convert-int-into-one-hot-format/507/23
-        def to_one_hot(y, n_dims=None):
-            """ Take integer y (tensor or variable) with n dims and convert it to 1-hot representation with n+1 dims. """
-            y_tensor = y.data if isinstance(y, Variable) else y
-            y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
-            n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
-            y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
-            y_one_hot = y_one_hot.view(*y.shape, -1)
-            return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
 
         _, max_indices[:] = torch.max(softmax, dim=1)
         hard_max = to_one_hot(torch.Tensor(max_indices), n_dims)

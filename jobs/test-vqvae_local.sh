@@ -24,4 +24,5 @@ python3 -u baseline/train_game.py \
 	--vocab-size 25 \
 	--discrete_latent_number 25 \
 	--discrete_latent_dimension 25 \
-	--discrete_communication
+	--discrete_communication \
+	--gumbel_softmax
