@@ -11,7 +11,7 @@ def plot_data(filename_data):
     dir_path = dir_path.replace("/baseline", "")
     full_filename_data = os.path.join(dir_path, filename_data)
 
-    filename_plot = "plots/vqvae_False_dc_False_gs_False_dln_25_dld_25_beta_0.25_seed_114_2019-07-20 12:52:25.677743.png"
+    filename_plot = filename_data.replace("output_data/", "plots/").replace(".csv", ".png")
     full_filename_plot = os.path.join(dir_path, filename_plot)
 
     with open(full_filename_data,'r') as csvfile:

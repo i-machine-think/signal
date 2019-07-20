@@ -17,6 +17,6 @@
 python3 -u baseline/train_game.py \
 	--device cpu \
 	--seed 114 \
-	--iterations 500 \
-	--log-interval 10 \
+	--iterations 8 \
+	--log-interval 2 \
 	--vocab-size 25 \
