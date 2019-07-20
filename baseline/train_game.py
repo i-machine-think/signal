@@ -388,7 +388,7 @@ def baseline(args):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     dir_path = dir_path.replace("/baseline", "")
     timestamp = str(datetime.datetime.now())
-    filename = "data/vqvae_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_seed_{}_{}.csv".format(
+    filename = "output_data/vqvae_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_seed_{}_{}.csv".format(
         args.vqvae,
         args.discrete_communication,
         args.gumbel_softmax,

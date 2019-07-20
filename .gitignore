@@ -114,4 +114,6 @@ venv.bak/
 /vqvae
 
 # data for plotting
-/data
+/output_data
+
+/baseline/data
