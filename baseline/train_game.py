@@ -5,8 +5,13 @@ import pickle
 import argparse
 import sys
 import torch
+
+#for logging of data
 import os
 import time
+import csv
+from itertools import zip_longest
+import datetime
 
 from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data, get_meta_data
 from helpers.train_helper import TrainHelper
@@ -265,6 +270,10 @@ def baseline(args):
         print(f'TEST results: loss: {average_test_loss} | accuracy: {average_test_accuracy}')
         return
 
+    iterations = []
+    losses = []
+    accuracies = []
+
     while iteration < args.iterations:
         for train_batch in train_data:
             print(f'{iteration}/{args.iterations}       \r', end='')
@@ -297,6 +306,7 @@ def baseline(args):
                     best_accuracy = average_valid_accuracy
                     current_patience = args.patience
                     save_model_state(model, model_path, epoch, iteration, best_accuracy)
+
 
                 # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
                 if not args.disable_print:
@@ -361,12 +371,42 @@ def baseline(args):
                             )
                         )
 
+                iterations.append(iteration)
+                losses.append(valid_loss_meter.avg)
+                accuracies.append(valid_acc_meter.avg)
+
             iteration += 1
+            if iteration >= args.iterations:
+                break
 
         epoch += 1
 
         if converged:
             break
+
+    # prepare writing of data
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    dir_path = dir_path.replace("/baseline", "")
+    timestamp = str(datetime.datetime.now())
+    filename = "data/vqvae_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_seed_{}_{}.csv".format(
+        args.vqvae,
+        args.discrete_communication,
+        args.gumbel_softmax,
+        args.discrete_latent_number,
+        args.discrete_latent_dimension,
+        args.beta,
+        args.seed,
+        timestamp)
+    full_filename = os.path.join(dir_path, filename)
+
+    # write data
+    d = [iterations, losses, accuracies]
+    export_data = zip_longest(*d, fillvalue = '')
+    with open(full_filename, 'w', encoding="ISO-8859-1", newline='') as myfile:
+          wr = csv.writer(myfile)
+          wr.writerow(("iteration", "loss", "accuracy"))
+          wr.writerows(export_data)
+    myfile.close()
 
     return run_folder
 
