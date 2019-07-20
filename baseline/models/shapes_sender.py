@@ -33,7 +33,7 @@ class ShapesSender(nn.Module):
         beta=0.25, # Weighting of loss terms 2 and 3 in VQ-VAE
         discrete_communication=False,
         gumbel_softmax=False,
-        self.rl=False
+        rl=False
         ):
 
         super().__init__()
@@ -91,6 +91,8 @@ class ShapesSender(nn.Module):
             self.vq = VectorQuantization()
             if self.discrete_communication:
                 self.hard_max = HardMax()
+
+        self.rl = rl
 
         if reset_params:
             self.reset_parameters()
@@ -261,10 +263,10 @@ class ShapesSender(nn.Module):
 
                 if self.training:
                     token_index = distr.sample()
-                    token = to_one_hot(token_index)
+                    token = to_one_hot(token_index, n_dims=self.vocab_size)
                 else:
                     token_index = step_logits.argmax(dim=1)
-                    token = to_one_hot(step_logits.argmax(dim=1))
+                    token = to_one_hot(step_logits.argmax(dim=1), n_dims=self.vocab_size)
                 logits[:,i] = distr.log_prob(token_index)
 
 

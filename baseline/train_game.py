@@ -175,7 +175,7 @@ def baseline(args):
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
         vqvae=args.vqvae,
-        args.rl)
+        rl=args.rl)
 
     model_path = file_helper.create_unique_model_path(model_name)
 
@@ -392,8 +392,9 @@ def baseline(args):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     dir_path = dir_path.replace("/baseline", "")
     timestamp = str(datetime.datetime.now())
-    filename = "output_data/vqvae_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_seed_{}_{}.csv".format(
+    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_seed_{}_{}.csv".format(
         args.vqvae,
+        args.rl,
         args.discrete_communication,
         args.gumbel_softmax,
         args.discrete_latent_number,

@@ -23,7 +23,8 @@ class ShapesTrainer(nn.Module):
             baseline_receiver: ShapesReceiver = None,
             diagnostic_receiver: MessagesReceiver = None,
             extract_features=False,
-            vqvae=False):
+            vqvae=False,
+            rl=False):
         super().__init__()
 
         self.sender = sender
@@ -35,11 +36,14 @@ class ShapesTrainer(nn.Module):
             self.visual_module = ShapesCNN(sender.hidden_size)
 
         self.device = device
-        self.vqvae = vqvae
         self.inference_step = inference_step
         self.step3 = step3
         self.multi_task = multi_task
         self.multi_task_lambda = multi_task_lambda
+        self.vqvae = vqvae
+        self.rl = rl
+        self.n_points = 0
+        self.mean_baseline = 0
 
     def _pad(self, messages, seq_lengths):
         """
@@ -58,6 +62,10 @@ class ShapesTrainer(nn.Module):
 
         return messages
 
+    def update_baseline(self, value):
+        self.n_points += 1
+        self.mean_baseline += (value.detach().mean().item() - self.mean_baseline) / self.n_points
+
     def forward(self, target, distractors, meta_data = None):
         batch_size = target.shape[0]
 
@@ -71,7 +79,7 @@ class ShapesTrainer(nn.Module):
         messages, lengths, entropy, _, _, loss_2_3, logits = self.sender.forward(
             hidden_state=target) # The first hidden state is the target, as in Referential Games paper.
 
-        if not self.vqvae:
+        if not self.vqvae and not self.rl:
             messages = self._pad(messages, lengths) # If I understand correctly: After eos happens the first time, all later words in message are eos as well.
 
         if not self.diagnostic_receiver and not self.baseline_receiver:
@@ -147,6 +155,14 @@ class ShapesTrainer(nn.Module):
             if self.vqvae:
                 # In the vqvae case, we add loss_2_3
                 baseline_mean_loss += loss_2_3
+
+            if self.rl:
+                logit = torch.sum(logits, dim=1)
+                entropy = torch.sum(entropy, dim=1)
+                self.update_baseline(baseline_loss)
+                rl_loss = (baseline_loss.detach() - self.mean_baseline) * logit
+                final_loss = torch.mean(baseline_loss + rl_loss - entropy)
+                return final_loss, final_loss.item(), baseline_accuracy, messages
 
             baseline_loss = baseline_mean_loss.item()
 
