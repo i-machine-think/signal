@@ -18,6 +18,8 @@ from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
 
+from plotting import plot_data
+
 from tensorboardX import SummaryWriter
 
 def parse_arguments(args):
@@ -407,6 +409,10 @@ def baseline(args):
           wr.writerow(("iteration", "loss", "accuracy"))
           wr.writerows(export_data)
     myfile.close()
+
+    # plotting
+    print(filename)
+    plot_data(filename)
 
     return run_folder
 
