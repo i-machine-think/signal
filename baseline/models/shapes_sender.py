@@ -252,6 +252,7 @@ class ShapesSender(nn.Module):
                 loss_2_3 = loss_2 + self.beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
                 losses_2_3[i] = loss_2_3
 
+            token=token.to(device)
             output.append(token)
 
         messages = torch.stack(output, dim=1)
