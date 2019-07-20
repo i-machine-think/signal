@@ -68,7 +68,7 @@ class ShapesTrainer(nn.Module):
             target = self.visual_module(target)  # This is the "f" function in the paper! No eta exists.
             distractors = [self.visual_module(d) for d in distractors]
 
-        messages, lengths, _, _, _, loss_2_3 = self.sender.forward(
+        messages, lengths, entropy, _, _, loss_2_3, logits = self.sender.forward(
             hidden_state=target) # The first hidden state is the target, as in Referential Games paper.
 
         if not self.vqvae:

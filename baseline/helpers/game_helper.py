@@ -66,7 +66,8 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             discrete_latent_number=args.discrete_latent_number,
             discrete_latent_dimension=args.discrete_latent_dimension,
             discrete_communication=args.discrete_communication,
-            gumbel_softmax=args.gumbel_softmax
+            gumbel_softmax=args.gumbel_softmax,
+            rl=args.rl
         )
 
         if not args.inference_step or args.multi_task:
@@ -77,8 +78,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
                 hidden_size=args.hidden_size,
                 cell_type=cell_type,
                 genotype=genotype,
-                dataset_type=args.dataset_type,
-                vqvae=args.vqvae
+                dataset_type=args.dataset_type
             )
 
     if args.inference_step or args.multi_task:
@@ -130,7 +130,8 @@ def get_trainer(
     step3,
     baseline_receiver = None,
     diagnostic_receiver = None,
-    vqvae=False):
+    vqvae=False,
+    rl=False):
     extract_features = dataset_type == "raw"
 
     return ShapesTrainer(
@@ -143,7 +144,8 @@ def get_trainer(
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
         extract_features=extract_features,
-        vqvae=vqvae)
+        vqvae=vqvae,
+        rl=rl)
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)

@@ -32,7 +32,8 @@ class ShapesSender(nn.Module):
         discrete_latent_dimension=25, #dimension of embedding vectors
         beta=0.25, # Weighting of loss terms 2 and 3 in VQ-VAE
         discrete_communication=False,
-        gumbel_softmax=False
+        gumbel_softmax=False,
+        self.rl=False
         ):
 
         super().__init__()
@@ -203,9 +204,10 @@ class ShapesSender(nn.Module):
         ) # [initial_length, initial_length, ..., initial_length]. This gets reduced whenever it ends somewhere.
 
         embeds = []  # keep track of the embedded sequence
-        entropy = 0.0
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
-        losses_2_3 = torch.empty(self.output_len)
+        losses_2_3 = torch.empty(self.output_len, device=self.device)
+        entropy = torch.empty((batch_size, self.output_len), device=self.device)
+        logits = torch.empty((batch_size, self.output_len), device=self.device)
 
         if self.discrete_communication:
             distance_computer = EmbeddingtableDistances(self.e)
@@ -223,48 +225,62 @@ class ShapesSender(nn.Module):
             else:
                 h = state
 
-            if not self.vqvae:
-                p = F.softmax(self.linear_out(h), dim=1)
-                entropy += Categorical(p).entropy()
-                token, sentence_probability = self.calculate_token_gumbel_softmax(p, tau, sentence_probability, batch_size)
-                self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
-            else:
-                pre_quant = self.linear_out(h)
-                indices = [None] * batch_size
-
-                if not self.discrete_communication:
-                    token = self.vq.apply(pre_quant, self.e, indices)
-                    #print_indices = [0, 1, 2]
-                    #print(np.array(indices)[print_indices])
+            if not self.rl:
+                if not self.vqvae:
+                    p = F.softmax(self.linear_out(h), dim=1)
+                    token, sentence_probability = self.calculate_token_gumbel_softmax(p, tau, sentence_probability, batch_size)
+                    self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
                 else:
-                    distances = distance_computer(pre_quant)
-                    softmin = F.softmax(-distances, dim=1)
-                    if not self.gumbel_softmax:
-                        token = self.hard_max.apply(softmin, indices, self.discrete_latent_number) # This also updates the indices
+                    pre_quant = self.linear_out(h)
+                    indices = [None] * batch_size
+
+                    if not self.discrete_communication:
+                        token = self.vq.apply(pre_quant, self.e, indices)
+                        #print_indices = [0, 1, 2]
+                        #print(np.array(indices)[print_indices])
                     else:
-                        _, indices[:] = torch.max(softmin, dim=1)
-                        token, _ = self.calculate_token_gumbel_softmax(softmin, tau, 0, batch_size)
-                        #token = to_one_hot(token, n_dims=self.vocab_size)
-                    #print_indices = [0, 1, 2]
-                    #print(np.array(indices)[print_indices])
-                loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
-                loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)
-                loss_2_3 = loss_2 + self.beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
-                losses_2_3[i] = loss_2_3
+                        distances = distance_computer(pre_quant)
+                        softmin = F.softmax(-distances, dim=1)
+                        if not self.gumbel_softmax:
+                            token = self.hard_max.apply(softmin, indices, self.discrete_latent_number) # This also updates the indices
+                        else:
+                            _, indices[:] = torch.max(softmin, dim=1)
+                            token, _ = self.calculate_token_gumbel_softmax(softmin, tau, 0, batch_size)
+                            #token = to_one_hot(token, n_dims=self.vocab_size)
+                        #print_indices = [0, 1, 2]
+                        #print(np.array(indices)[print_indices])
+                    loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
+                    loss_3 = torch.mean(torch.norm(pre_quant - self.e[indices].detach(), dim=1)**2)
+                    loss_2_3 = loss_2 + self.beta*loss_3 # This corresponds to the second and third loss term in VQ-VAE
+                    losses_2_3[i] = loss_2_3
+
+            else:
+                step_logits = F.log_softmax(self.linear_out(h), dim=1)
+                distr = Categorical(logits=step_logits)
+                entropy[:,i] = distr.entropy()
+
+                if self.training:
+                    token_index = distr.sample()
+                    token = to_one_hot(token_index)
+                else:
+                    token_index = step_logits.argmax(dim=1)
+                    token = to_one_hot(step_logits.argmax(dim=1))
+                logits[:,i] = distr.log_prob(token_index)
+
 
             token=token.to(self.device)
             output.append(token)
 
         messages = torch.stack(output, dim=1)
-        entropy_out = entropy / self.output_len
         loss_2_3_out = torch.mean(losses_2_3)
 
 
         return (
             messages,
             seq_lengths,
-            entropy_out,
+            entropy,
             torch.stack(embeds, dim=1),
             sentence_probability,
-            loss_2_3_out
+            loss_2_3_out,
+            logits
         )

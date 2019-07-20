@@ -13,15 +13,14 @@ class ShapesReceiver(nn.Module):
         hidden_size=512,
         cell_type="lstm",
         genotype=None,
-        dataset_type="meta",
-        vqvae=False):
+        dataset_type="meta"
+        ):
         super().__init__()
 
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.cell_type = cell_type
         self.device = device
-        self.vqvae = vqvae
 
         # This is only used when not training using raw data
         # self.input_module = ShapesMetaVisualModule(
