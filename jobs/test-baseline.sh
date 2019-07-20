@@ -17,4 +17,9 @@
 #module load NCCL/2.0.5-CUDA-9.0.176
 #export LD_LIBRARY_PATH=/hpc/eb/Debian9/cuDNN/7.1-CUDA-8.0.44-GCCcore-5.4.0/lib64:$LD_LIBRARY_PATH
 
-python3 -u baseline/train_game.py --device cuda --seed 114 --iterations 30000 --log-interval 10
+python3 -u baseline/train_game.py \
+	--device cuda \
+	--seed 114 \
+	--iterations 30000 \
+	--log-interval 10 \
+	--vocab-size 25 \
