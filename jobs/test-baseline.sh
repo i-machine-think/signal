@@ -20,6 +20,6 @@
 srun python3 -u baseline/train_game.py \
 	--device cuda \
 	--seed 114 \
-	--iterations 30000 \
+	--iterations 500 \
 	--log-interval 10 \
 	--vocab-size 25 \
