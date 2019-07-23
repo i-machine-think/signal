@@ -65,7 +65,6 @@ def parse_arguments(args):
     parser.add_argument("--name",type=str,default=False,metavar="S",help="Name to append to run file name",)
     parser.add_argument("--folder",type=str,default=False,metavar="S",help="Additional folder within runs/",)
     parser.add_argument("--disable-print",help="Disable printing", action="store_true",)
-    parser.add_argument("--device",type=str,help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done",)
     parser.add_argument("--patience",type=int,default=10,help="Amount of epochs to check for not improved validation score before early stopping",)
     parser.add_argument("--test-mode",help="Only run the saved model on the test set",action="store_true",)
     parser.add_argument("--resume-training",help="Resume the training from the saved model state",action="store_true",)
@@ -141,10 +140,7 @@ def load_model_state(model, model_path):
 def baseline(args):
     args = parse_arguments(args)
 
-    if args.device:
-        device = torch.device(args.device)
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     file_helper = FileHelper()
     train_helper = TrainHelper(device)

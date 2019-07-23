@@ -10,16 +10,9 @@
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=leon.lang@student.uva.nl
 
-#module purge
-#module load eb
-#module load Python/3.6.3-foss-2017b
-#module load cuDNN/7.0.5-CUDA-9.0.176
-#module load NCCL/2.0.5-CUDA-9.0.176
-#export LD_LIBRARY_PATH=/hpc/eb/Debian9/cuDNN/7.1-CUDA-8.0.44-GCCcore-5.4.0/lib64:$LD_LIBRARY_PATH
-
-srun python3 -u baseline/train_game.py \
-	--device cuda \
+python3 -u baseline/train_game.py \
 	--seed 114 \
-	--iterations 500 \
-	--log-interval 10 \
+	--iterations 6 \
+	--log-interval 2 \
 	--vocab-size 25 \
+	--rl
