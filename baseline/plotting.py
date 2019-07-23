@@ -5,6 +5,9 @@ import os
 def plot_data(filename_data):
     iterations = []
     losses = []
+    hinge_losses = []
+    rl_losses = []
+    entropies = []
     accuracies = []
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -21,7 +24,10 @@ def plot_data(filename_data):
             if index > 0:
                 iterations.append(float(row[0]))
                 losses.append(float(row[1]))
-                accuracies.append(float(row[2]))
+                hinge_losses.append(float(row[2]))
+                rl_losses.append(float(row[3]))
+                entropies.append(float(row[4]))
+                accuracies.append(float(row[5]))
             index +=1
 
     # plotting taken from https://matplotlib.org/gallery/api/two_scales.html

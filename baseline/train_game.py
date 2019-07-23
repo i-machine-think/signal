@@ -176,7 +176,8 @@ def baseline(args):
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
         vqvae=args.vqvae,
-        rl=args.rl)
+        rl=args.rl,
+        entropy_coefficient=args.entropy_coefficient)
 
     model_path = file_helper.create_unique_model_path(model_name)
 
@@ -263,7 +264,14 @@ def baseline(args):
 
     if args.test_mode:
         test_loss_meter, test_acc_meter, _ = train_helper.evaluate(
-            model, test_data, test_meta_data, device, args.inference_step, args.multi_task, args.step3)
+            model,
+            test_data,
+            test_meta_data,
+            device,
+            args.inference_step,
+            args.multi_task,
+            args.step3,
+            args.rl)
 
         if args.multi_task:
             average_test_accuracy = args.multi_task_lambda * test_acc_meter[0].avg + (1 - args.multi_task_lambda) * test_acc_meter[1].avg
@@ -277,7 +285,11 @@ def baseline(args):
 
     iterations = []
     losses = []
+    hinge_losses = []
+    rl_losses = []
+    entropies = []
     accuracies = []
+
 
     while iteration < args.iterations:
         for train_batch in train_data:
@@ -289,8 +301,27 @@ def baseline(args):
 
             if iteration % args.log_interval == 0:
 
-                valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
-                    model, valid_data, valid_meta_data, device, args.inference_step, args.multi_task, args.step3)
+                if not arg.rl:
+                    valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
+                        model,
+                        valid_data,
+                        valid_meta_data,
+                        device,
+                        args.inference_step,
+                        args.multi_task,
+                        args.step3,
+                        args.rl)
+                else:
+                    valid_loss_meter, hinge_loss_meter, rl_loss_meter, entropy_meter, valid_acc_meter, _ = train_helper.evaluate(
+                        model,
+                        valid_data,
+                        valid_meta_data,
+                        device,
+                        args.inference_step,
+                        args.multi_task,
+                        args.step3,
+                        args.rl
+                    )
 
                 new_best = False
 
@@ -367,17 +398,33 @@ def baseline(args):
                         #     writers[i].add_scalar('loss', valid_loss_meter.averages[i], global_step=iteration)
 
                     else:
-                        print(
-                            "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
-                                iteration,
-                                args.iterations,
-                                valid_loss_meter.avg,
-                                valid_acc_meter.avg,
-                            )
+                        if not args.rl:
+                            print(
+                                "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
+                                    iteration,
+                                    args.iterations,
+                                    valid_loss_meter.avg,
+                                    valid_acc_meter.avg,
+                                )
+                        else:
+                            print(
+                                "{}/{} Iterations: val loss: {}, val hinge loss: {}, val rl loss: {}, val entropy: {}, val accuracy: {}".format(
+                                    iteration,
+                                    args.iterations,
+                                    valid_loss_meter.avg,
+                                    hinge_loss_meter.avg,
+                                    rl_loss_meter.avg,
+                                    entropy_meter.avg,
+                                    valid_acc_meter.avg
+                                )
                         )
 
                 iterations.append(iteration)
                 losses.append(valid_loss_meter.avg)
+                if args.rl:
+                    hinge_losses.append(hinge_loss_meter.avg)
+                    rl_losses.append(rl_loss_meter.avg)
+                    entropies.append(entropy_meter.avg)
                 accuracies.append(valid_acc_meter.avg)
 
             iteration += 1
@@ -393,7 +440,7 @@ def baseline(args):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     dir_path = dir_path.replace("/baseline", "")
     timestamp = str(datetime.datetime.now())
-    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_seed_{}_{}.csv".format(
+    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_entropy_coefficient_{}_seed_{}_{}.csv".format(
         args.vqvae,
         args.rl,
         args.discrete_communication,
@@ -401,16 +448,17 @@ def baseline(args):
         args.discrete_latent_number,
         args.discrete_latent_dimension,
         args.beta,
+        args.entropy_coefficient,
         args.seed,
         timestamp)
     full_filename = os.path.join(dir_path, filename)
 
     # write data
-    d = [iterations, losses, accuracies]
+    d = [iterations, losses, hinge_losses, rl_losses, entropies, accuracies]
     export_data = zip_longest(*d, fillvalue = '')
     with open(full_filename, 'w', encoding="ISO-8859-1", newline='') as myfile:
           wr = csv.writer(myfile)
-          wr.writerow(("iteration", "loss", "accuracy"))
+          wr.writerow(("iteration", "loss", "hinge loss", "rl loss", "entropy", "accuracy"))
           wr.writerows(export_data)
     myfile.close()
 

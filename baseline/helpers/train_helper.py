@@ -41,7 +41,15 @@ class TrainHelper():
 
         return losses, accuracies
 
-    def evaluate(self, model, dataloader, valid_meta_data, device, inference_step, multi_task, step3):
+    def evaluate(self,
+        model,
+        dataloader,
+        valid_meta_data,
+        device,
+        inference_step,
+        multi_task,
+        step3,
+        rl):
 
         if multi_task:
             loss_meter = [AverageEnsembleMeter(5), AverageMeter()]
@@ -50,8 +58,15 @@ class TrainHelper():
             loss_meter = AverageEnsembleMeter(5)
             acc_meter = AverageEnsembleMeter(5)
         else:
-            loss_meter = AverageMeter()
-            acc_meter = AverageMeter()
+            if not rl:
+                loss_meter = AverageMeter()
+                acc_meter = AverageMeter()
+            else:
+                combined_loss_meter = AverageMeter()
+                hinge_loss_meter = AverageMeter()
+                rl_loss_meter = AverageMeter()
+                entropy_meter = AverageMeter()
+                acc_meter = AverageMeter()
 
         messages = []
 
@@ -64,11 +79,11 @@ class TrainHelper():
             else:
                 vmd = None
 
-            _, loss2, acc, msg = model.forward(target, distractors, vmd)
+            _, loss_item, acc, msg = model.forward(target, distractors, vmd)
 
             if multi_task:
-                loss_meter[0].update(loss2[0])
-                loss_meter[1].update(loss2[1])
+                loss_meter[0].update(loss_item[0])
+                loss_meter[1].update(loss_item[1])
 
                 acc_meter[0].update(acc[0])
                 acc_meter[1].update(acc[1])
@@ -76,21 +91,40 @@ class TrainHelper():
                 lkey = torch.tensor(list(map(int, lkey)))
                 lkey_stack = torch.stack([lkey == 0, lkey == 1, lkey == 2, lkey == 3, lkey == 4])
                 acc = (torch.sum(lkey_stack.cpu().float() * acc.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).numpy()
-                loss2 = (torch.sum(lkey_stack.cpu().float() * loss2.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).detach().numpy()
-                loss_meter.update(loss2)
+                loss_item = (torch.sum(lkey_stack.cpu().float() * loss_item.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).detach().numpy()
+                loss_meter.update(loss_item)
                 acc_meter.update(acc)
 
             else:
-                loss_meter.update(loss2)
-                acc_meter.update(acc)
+                if not rl:
+                    loss_meter.update(loss_item)
+                    acc_meter.update(acc)
+                else:
+                    combined_loss, hinge_loss, rl_loss, entropy = loss_item
+                    combined_loss_meter.update(combined_loss)
+                    hinge_loss_meter.update(hinge_loss)
+                    rl_loss_meter.update(rl_loss)
+                    entropy_meter.update(entropy)
+                    acc_meter.update(acc)
+
 
             messages.append(msg)
 
-        return (
-            loss_meter,
-            acc_meter,
-            torch.cat(messages, 0)
-        )
+        if not rl:
+            return (
+                loss_meter,
+                acc_meter,
+                torch.cat(messages, 0)
+            )
+        else:
+            return (
+                combined_loss_meter,
+                hinge_loss_meter,
+                rl_loss_meter,
+                entropy_meter,
+                acc_meter,
+                torch.cat(messages, 0)
+            )
 
     def get_filename_from_baseline_params(self, params):
         """
