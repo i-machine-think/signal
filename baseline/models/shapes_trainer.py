@@ -44,6 +44,7 @@ class ShapesTrainer(nn.Module):
         self.output_len = self.sender.output_len
         self.vqvae = vqvae
         self.rl = rl
+        self.entropy_coefficient = entropy_coefficient
         self.n_baseline_updates = 0
         self.hinge_loss_baseline = 0
 
@@ -163,7 +164,7 @@ class ShapesTrainer(nn.Module):
 
             if self.rl:
                 logit = torch.sum(message_logits, dim=1)
-                entropy_mean = torch.mean(torch.sum(entropy, dim=1) / self.output_len.float())
+                entropy_mean = torch.mean(torch.sum(entropy, dim=1) / self.output_len)
                 self.update_baseline(hinge_mean_loss)
                 rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * logit)
                 final_loss = hinge_mean_loss + rl_mean_loss - self.entropy_coefficient*entropy_mean

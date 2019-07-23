@@ -301,7 +301,7 @@ def baseline(args):
 
             if iteration % args.log_interval == 0:
 
-                if not arg.rl:
+                if not args.rl:
                     valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
                         model,
                         valid_data,
@@ -404,8 +404,8 @@ def baseline(args):
                                     iteration,
                                     args.iterations,
                                     valid_loss_meter.avg,
-                                    valid_acc_meter.avg,
-                                )
+                                    valid_acc_meter.avg)
+                            )
                         else:
                             print(
                                 "{}/{} Iterations: val loss: {}, val hinge loss: {}, val rl loss: {}, val entropy: {}, val accuracy: {}".format(
@@ -415,9 +415,8 @@ def baseline(args):
                                     hinge_loss_meter.avg,
                                     rl_loss_meter.avg,
                                     entropy_meter.avg,
-                                    valid_acc_meter.avg
-                                )
-                        )
+                                    valid_acc_meter.avg)
+                            )
 
                 iterations.append(iteration)
                 losses.append(valid_loss_meter.avg)
@@ -464,7 +463,7 @@ def baseline(args):
 
     # plotting
     print(filename)
-    plot_data(filename)
+    plot_data(filename, args)
 
     return run_folder
 
