@@ -27,6 +27,7 @@ class ShapesSender(nn.Module):
         dataset_type="meta",
         reset_params=True,
         inference_step=False,
+        tau=1.2,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
         discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
         discrete_latent_dimension=25, #dimension of embedding vectors
@@ -181,7 +182,7 @@ class ShapesSender(nn.Module):
                 token = token.unsqueeze(0)
         return token, sentence_probability
 
-    def forward(self, tau=1.2, hidden_state=None):
+    def forward(self, hidden_state=None):
         """
         Performs a forward pass. If training, use Gumbel Softmax (hard) for sampling, else use
         discrete sampling.
@@ -230,7 +231,7 @@ class ShapesSender(nn.Module):
             if not self.rl:
                 if not self.vqvae:
                     p = F.softmax(self.linear_out(h), dim=1)
-                    token, sentence_probability = self.calculate_token_gumbel_softmax(p, tau, sentence_probability, batch_size)
+                    token, sentence_probability = self.calculate_token_gumbel_softmax(p, self.tau, sentence_probability, batch_size)
                     self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
                 else:
                     pre_quant = self.linear_out(h)
@@ -247,7 +248,7 @@ class ShapesSender(nn.Module):
                             token = self.hard_max.apply(softmin, indices, self.discrete_latent_number) # This also updates the indices
                         else:
                             _, indices[:] = torch.max(softmin, dim=1)
-                            token, _ = self.calculate_token_gumbel_softmax(softmin, tau, 0, batch_size)
+                            token, _ = self.calculate_token_gumbel_softmax(softmin, self.tau, 0, batch_size)
                             #token = to_one_hot(token, n_dims=self.vocab_size)
                         #print_indices = [0, 1, 2]
                         #print(np.array(indices)[print_indices])

@@ -61,6 +61,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             genotype=genotype,
             dataset_type=args.dataset_type,
             inference_step=args.inference_step,
+            tau=args.tau
             vqvae=args.vqvae,
             beta=args.beta,
             discrete_latent_number=args.discrete_latent_number,

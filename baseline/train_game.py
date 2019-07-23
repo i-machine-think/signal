@@ -48,6 +48,7 @@ def parse_arguments(args):
     parser.add_argument("--step3",help="Run with property specific distractors",action="store_true",)
     parser.add_argument("--multi-task",help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",action="store_true",)
     parser.add_argument("--multi-task-lambda",type=float,default=0.5,help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",)
+    parser.add_argument("--tau",type=float,default=1.2,help="temperature parameter for softmax distributions")
     parser.add_argument("--vqvae",help="switch for using vector quantization (default:False)",action="store_true",)
     parser.add_argument("--beta",type=float,default=0.25,help="weighting factor for loss-terms 2 and 3 in VQ-VAE",)
     parser.add_argument("--discrete_latent_number",type=int,default=25,help="Number of embedding vectors in the VQ-VAE case",)
