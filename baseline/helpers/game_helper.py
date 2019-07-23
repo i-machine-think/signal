@@ -131,7 +131,8 @@ def get_trainer(
     baseline_receiver = None,
     diagnostic_receiver = None,
     vqvae=False,
-    rl=False):
+    rl=False,
+    entropy_coefficient=args.entropy_coefficient):
     extract_features = dataset_type == "raw"
 
     return ShapesTrainer(

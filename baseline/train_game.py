@@ -55,6 +55,7 @@ def parse_arguments(args):
     parser.add_argument("--discrete_communication",help="switch for communicating discretely in the vqvae case",action="store_true",)
     parser.add_argument("--gumbel_softmax",help="switch for using straight-through gumbel_softmax in the vqvae-discrete_communication case",action="store_true",)
     parser.add_argument("--rl",help="switch for using REINFORCE for training the sender",action="store_true")
+    parser.add_argument("--entropy_coefficient",type=float,default=1.0,help="weighting factor for the entropy that's increased in RL")
 
     # Arguments not specific to the training process itself
     parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)

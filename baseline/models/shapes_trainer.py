@@ -24,7 +24,8 @@ class ShapesTrainer(nn.Module):
             diagnostic_receiver: MessagesReceiver = None,
             extract_features=False,
             vqvae=False,
-            rl=False):
+            rl=False,
+            entropy_coefficient=1.0):
         super().__init__()
 
         self.sender = sender
@@ -42,8 +43,8 @@ class ShapesTrainer(nn.Module):
         self.multi_task_lambda = multi_task_lambda
         self.vqvae = vqvae
         self.rl = rl
-        self.n_points = 0
-        self.mean_baseline = 0
+        self.n_baseline_updates = 0
+        self.hinge_loss_baseline = 0
 
     def _pad(self, messages, seq_lengths):
         """
@@ -63,8 +64,10 @@ class ShapesTrainer(nn.Module):
         return messages
 
     def update_baseline(self, value):
-        self.n_points += 1
-        self.mean_baseline += (value.detach().mean().item() - self.mean_baseline) / self.n_points
+        # Compute the mean of the hinge losses seen so far.
+        # Acts as a baseline for stabilizing RL.
+        self.n_baseline_updates += 1
+        self.hinge_loss_baseline += (value.detach().item() - self.hinge_loss_baseline) / self.n_baseline_updates
 
     def forward(self, target, distractors, meta_data = None):
         batch_size = target.shape[0]
@@ -76,7 +79,7 @@ class ShapesTrainer(nn.Module):
             target = self.visual_module(target)  # This is the "f" function in the paper! No eta exists.
             distractors = [self.visual_module(d) for d in distractors]
 
-        messages, lengths, entropy, _, _, loss_2_3, logits = self.sender.forward(
+        messages, lengths, entropy, _, _, loss_2_3, message_logits = self.sender.forward(
             hidden_state=target) # The first hidden state is the target, as in Referential Games paper.
 
         if not self.vqvae and not self.rl:
@@ -111,7 +114,7 @@ class ShapesTrainer(nn.Module):
         if not self.inference_step or self.multi_task:
             r_transform, _ = self.baseline_receiver.forward(messages=messages) # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
 
-            baseline_loss = 0
+            hinge_loss = 0
 
             target = target.view(batch_size, 1, -1)
             r_transform = r_transform.view(batch_size, -1, 1)
@@ -131,7 +134,7 @@ class ShapesTrainer(nn.Module):
                 d = d.view(batch_size, 1, -1)
                 d_score = torch.bmm(d, r_transform).squeeze()
                 all_scores[:, i] = d_score
-                baseline_loss += torch.max(
+                hinge_loss += torch.max(
                     torch.tensor(0.0, device=self.device), 1.0 -
                     target_score + d_score
                 ) # This creates the sum in equation (1) of the original paper!
@@ -144,31 +147,31 @@ class ShapesTrainer(nn.Module):
             accuracy = max_idx == target_index # model liegt "richtig", wenn die dot-product similarity zwischen target und Ergebnis größer ist als die mit allen Distractors.
             accuracy = accuracy.to(dtype=torch.float32)
 
-            # print(type(torch.mean(baseline_loss)), type(baseline_loss), type(accuracy))
-            # print((torch.mean(baseline_loss).shape), (baseline_loss.shape), (accuracy.shape))
+            # print(type(torch.mean(hinge_loss)), type(hinge_loss), type(accuracy))
+            # print((torch.mean(hinge_loss).shape), (hinge_loss.shape), (accuracy.shape))
             if self.step3:
-                return torch.mean(baseline_loss), baseline_loss, accuracy, messages
+                return torch.mean(hinge_loss), hinge_loss, accuracy, messages
 
             baseline_accuracy = torch.mean(accuracy).item()
-            baseline_mean_loss = torch.mean(baseline_loss) # without item, since it will be backpropagated
+            hinge_mean_loss = torch.mean(hinge_loss) # without item, since it will be backpropagated
 
             if self.vqvae:
                 # In the vqvae case, we add loss_2_3
-                baseline_mean_loss += loss_2_3
+                hinge_mean_loss += loss_2_3
 
             if self.rl:
-                logit = torch.sum(logits, dim=1)
-                entropy = torch.sum(entropy, dim=1)
-                self.update_baseline(baseline_loss)
-                rl_loss = (baseline_loss.detach() - self.mean_baseline) * logit
-                final_loss = torch.mean(baseline_loss + rl_loss - entropy)
-                return final_loss, final_loss.item(), baseline_accuracy, messages
+                logit = torch.sum(message_logits, dim=1)
+                entropy_mean = torch.mean(torch.sum(entropy, dim=1))
+                self.update_baseline(hinge_mean_loss)
+                rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * logit)
+                final_loss = hinge_mean_loss + rl_mean_loss - self.entropy_coefficient*entropy_mean
+                return final_loss, (final_loss.item(), hinge_mean_loss.item(), rl_mean_loss.item(), entropy_mean.item()), baseline_accuracy, messages
 
-            baseline_loss = baseline_mean_loss.item()
+            hinge_mean_loss_item = hinge_mean_loss.item()
 
             if not self.multi_task:
-                return baseline_mean_loss, baseline_loss, baseline_accuracy, messages
+                return hinge_mean_loss, hinge_mean_loss_item, baseline_accuracy, messages
 
-            final_loss += (1 - self.multi_task_lambda) * baseline_mean_loss
+            final_loss += (1 - self.multi_task_lambda) * hinge_mean_loss
 
-            return final_loss, (inference_losses, baseline_loss), (inference_accuracies, baseline_accuracy), messages
+            return final_loss, (inference_losses, hinge_mean_loss_item), (inference_accuracies, baseline_accuracy), messages

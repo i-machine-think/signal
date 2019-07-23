@@ -209,7 +209,7 @@ class ShapesSender(nn.Module):
         sentence_probability = torch.zeros((batch_size, self.vocab_size), device=self.device)
         losses_2_3 = torch.empty(self.output_len, device=self.device)
         entropy = torch.empty((batch_size, self.output_len), device=self.device)
-        logits = torch.empty((batch_size, self.output_len), device=self.device)
+        message_logits = torch.empty((batch_size, self.output_len), device=self.device)
 
         if self.discrete_communication:
             distance_computer = EmbeddingtableDistances(self.e)
@@ -257,17 +257,17 @@ class ShapesSender(nn.Module):
                     losses_2_3[i] = loss_2_3
 
             else:
-                step_logits = F.log_softmax(self.linear_out(h), dim=1)
-                distr = Categorical(logits=step_logits)
+                all_logits = F.log_softmax(self.linear_out(h), dim=1)
+                distr = Categorical(logits=all_logits)
                 entropy[:,i] = distr.entropy()
 
                 if self.training:
                     token_index = distr.sample()
                     token = to_one_hot(token_index, n_dims=self.vocab_size)
                 else:
-                    token_index = step_logits.argmax(dim=1)
-                    token = to_one_hot(step_logits.argmax(dim=1), n_dims=self.vocab_size)
-                logits[:,i] = distr.log_prob(token_index)
+                    token_index = all_logits.argmax(dim=1)
+                    token = to_one_hot(token_index, n_dims=self.vocab_size)
+                message_logits[:,i] = distr.log_prob(token_index)
 
 
             token=token.to(self.device)
@@ -284,5 +284,5 @@ class ShapesSender(nn.Module):
             torch.stack(embeds, dim=1),
             sentence_probability,
             loss_2_3_out,
-            logits
+            message_logits
         )
