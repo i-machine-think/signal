@@ -440,7 +440,7 @@ def baseline(args):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     dir_path = dir_path.replace("/baseline", "")
     timestamp = str(datetime.datetime.now())
-    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_entropy_coefficient_{}_seed_{}_{}.csv".format(
+    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_entropy_coefficient_{}_myopic_{}_mc_{}_seed_{}_{}.csv".format(
         args.vqvae,
         args.rl,
         args.discrete_communication,
@@ -449,6 +449,8 @@ def baseline(args):
         args.discrete_latent_dimension,
         args.beta,
         args.entropy_coefficient,
+        args.myopic,
+        args.myopic_coefficient,
         args.seed,
         timestamp)
     full_filename = os.path.join(dir_path, filename)
