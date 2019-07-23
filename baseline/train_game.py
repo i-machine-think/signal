@@ -87,8 +87,8 @@ def save_model_state(model, checkpoint_path: str, epoch: int, iteration: int, be
     if model.visual_module:
         checkpoint_state['visual_module'] = model.visual_module.state_dict()
 
-    if model.baseline_receiver:
-        checkpoint_state['baseline_receiver'] = model.baseline_receiver.state_dict()
+    if model.receiver:
+        checkpoint_state['receiver'] = model.receiver.state_dict()
 
     if model.diagnostic_receiver:
         checkpoint_state['diagnostic_receiver'] = model.diagnostic_receiver.state_dict()
@@ -116,8 +116,8 @@ def load_model_state(model, model_path):
     if 'visual_module' in checkpoint.keys() and checkpoint['visual_module']:
         model.visual_module.load_state_dict(checkpoint['visual_module'])
 
-    if 'baseline_receiver' in checkpoint.keys() and checkpoint['baseline_receiver']:
-        model.baseline_receiver.load_state_dict(checkpoint['baseline_receiver'])
+    if 'receiver' in checkpoint.keys() and checkpoint['receiver']:
+        model.receiver.load_state_dict(checkpoint['receiver'])
 
     if 'diagnostic_receiver' in checkpoint.keys() and checkpoint['diagnostic_receiver']:
         model.diagnostic_receiver.load_state_dict(checkpoint['diagnostic_receiver'])
@@ -152,20 +152,20 @@ def baseline(args):
     metrics_helper = MetricsHelper(run_folder, args.seed)
 
     # get sender and receiver models and save them
-    sender, baseline_receiver, diagnostic_receiver = get_sender_receiver(device, args)
+    sender, receiver, diagnostic_receiver = get_sender_receiver(device, args)
 
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
     #torch.save(sender, sender_file)
 
-    if baseline_receiver:
-        torch.save(baseline_receiver, receiver_file)
+    if receiver:
+        torch.save(receiver, receiver_file)
 
     model = get_trainer(
         sender,
         device,
         args.dataset_type,
-        baseline_receiver=baseline_receiver,
+        receiver=receiver,
         diagnostic_receiver=diagnostic_receiver,
         vqvae=args.vqvae,
         rl=args.rl,
@@ -211,8 +211,8 @@ def baseline(args):
             )
         )
         print(sender)
-        if baseline_receiver:
-            print(baseline_receiver)
+        if receiver:
+            print(receiver)
 
         if diagnostic_receiver:
             print(diagnostic_receiver)

@@ -16,7 +16,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
 
-    baseline_receiver = None
+    receiver = None
     diagnostic_receiver = None
 
     cell_type = "lstm"
@@ -37,7 +37,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
         )
 
 
-        baseline_receiver = ShapesSingleModel(
+        receiver = ShapesSingleModel(
             args.vocab_size,
             args.max_length,
             vocab.bound_idx,
@@ -71,7 +71,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
             rl=args.rl
         )
 
-        baseline_receiver = Receiver(
+        receiver = Receiver(
             args.vocab_size,
             device,
             embedding_size=args.embedding_size,
@@ -84,16 +84,16 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
     if args.sender_path:
         sender = torch.load(args.sender_path)
     if args.receiver_path:
-        baseline_receiver = torch.load(args.receiver_path)
+        receiver = torch.load(args.receiver_path)
 
-    return sender, baseline_receiver, None
+    return sender, receiver, None
 
 
 def get_trainer(
     sender,
     device,
     dataset_type,
-    baseline_receiver = None,
+    receiver = None,
     diagnostic_receiver = None,
     vqvae=False,
     rl=False,
@@ -105,7 +105,7 @@ def get_trainer(
     return FullModel(
         sender,
         device,
-        baseline_receiver=baseline_receiver,
+        receiver=receiver,
         diagnostic_receiver=diagnostic_receiver,
         extract_features=extract_features,
         vqvae=vqvae,

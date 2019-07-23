@@ -15,7 +15,7 @@ class FullModel(nn.Module):
             self,
             sender: Sender,
             device,
-            baseline_receiver: Receiver = None,
+            receiver: Receiver = None,
             diagnostic_receiver= None,
             extract_features=False,
             vqvae=False,
@@ -26,7 +26,7 @@ class FullModel(nn.Module):
         super().__init__()
 
         self.sender = sender
-        self.baseline_receiver = baseline_receiver
+        self.receiver = receiver
         self.diagnostic_receiver = diagnostic_receiver
 
         self.extract_features = extract_features
@@ -90,12 +90,12 @@ class FullModel(nn.Module):
         if not self.vqvae and not self.rl:
             messages = self._pad(messages, lengths) # If I understand correctly: After eos happens the first time, all later words in message are eos as well.
 
-        if not self.diagnostic_receiver and not self.baseline_receiver:
+        if not self.diagnostic_receiver and not self.receiver:
             return messages
 
         final_loss = 0
 
-        r_transform, _ = self.baseline_receiver.forward(messages=messages) # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
+        r_transform, _ = self.receiver.forward(messages=messages) # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
 
         hinge_loss = 0
 
@@ -133,7 +133,7 @@ class FullModel(nn.Module):
         # print(type(torch.mean(hinge_loss)), type(hinge_loss), type(accuracy))
         # print((torch.mean(hinge_loss).shape), (hinge_loss.shape), (accuracy.shape))
 
-        baseline_accuracy = torch.mean(accuracy).item()
+        accuracy_mean = torch.mean(accuracy).item()
         hinge_mean_loss = torch.mean(hinge_loss) # without item, since it will be backpropagated
 
         if self.vqvae:
@@ -146,8 +146,8 @@ class FullModel(nn.Module):
             self.update_baseline(hinge_mean_loss)
             rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * logit)
             final_loss = hinge_mean_loss + rl_mean_loss - self.entropy_coefficient*entropy_mean
-            return final_loss, (final_loss.item(), hinge_mean_loss.item(), rl_mean_loss.item(), entropy_mean.item()), baseline_accuracy, messages
+            return final_loss, (final_loss.item(), hinge_mean_loss.item(), rl_mean_loss.item(), entropy_mean.item()), accuracy_mean, messages
 
         hinge_mean_loss_item = hinge_mean_loss.item()
 
-        return hinge_mean_loss, hinge_mean_loss_item, baseline_accuracy, messages
+        return hinge_mean_loss, hinge_mean_loss_item, accuracy_mean, messages
