@@ -6,7 +6,6 @@ import torch.nn as nn
 from .cnn import CNN
 
 from .receiver import Receiver
-from .messages_receiver import MessagesReceiver
 from .sender import Sender
 
 import numpy as np
@@ -17,7 +16,7 @@ class FullModel(nn.Module):
             sender: Sender,
             device,
             baseline_receiver: Receiver = None,
-            diagnostic_receiver: MessagesReceiver = None,
+            diagnostic_receiver= None,
             extract_features=False,
             vqvae=False,
             rl=False,

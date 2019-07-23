@@ -10,12 +10,9 @@ from enums.dataset_type import DatasetType
 from models.receiver import Receiver
 from models.sender import Sender
 from models.full_model import FullModel
-from models.shapes_single_model import ShapesSingleModel
-from models.shapes_meta_visual_module import ShapesMetaVisualModule
-from models.messages_receiver import MessagesReceiver
 
 
-def get_sender_receiver(device, args) -> (Sender, Receiver, MessagesReceiver):
+def get_sender_receiver(device, args) -> (Sender, Receiver):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
 
@@ -25,6 +22,8 @@ def get_sender_receiver(device, args) -> (Sender, Receiver, MessagesReceiver):
     cell_type = "lstm"
     genotype = {}
     if args.single_model:
+        pass
+        """
         sender = ShapesSingleModel(
             args.vocab_size,
             args.max_length,
@@ -37,6 +36,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver, MessagesReceiver):
             dataset_type=args.dataset_type,
         )
 
+
         baseline_receiver = ShapesSingleModel(
             args.vocab_size,
             args.max_length,
@@ -48,6 +48,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver, MessagesReceiver):
             genotype=genotype,
             dataset_type=args.dataset_type,
         )
+        """
     else:
         sender = Sender(
             args.vocab_size,
@@ -85,33 +86,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver, MessagesReceiver):
     if args.receiver_path:
         baseline_receiver = torch.load(args.receiver_path)
 
-
-    # This is only used when not training using raw data
-    # if args.freeze_sender:
-    #     for param in sender.parameters():
-    #         param.requires_grad = False
-    # else:
-    #     s_visual_module = ShapesMetaVisualModule(
-    #         hidden_size=sender.hidden_size, dataset_type=args.dataset_type
-    #     )
-    #     sender.input_module = s_visual_module
-
-    # if args.freeze_receiver:
-    #     for param in receiver.parameters():
-    #         param.requires_grad = False
-    # else:
-    #     r_visual_module = ShapesMetaVisualModule(
-    #         hidden_size=receiver.hidden_size,
-    #         dataset_type=args.dataset_type,
-    #         sender=False,
-    #     )
-
-    #     if args.single_model:
-    #         receiver.output_module = r_visual_module
-    #     else:
-    #         receiver.input_module = r_visual_module
-
-    return sender, baseline_receiver, diagnostic_receiver
+    return sender, baseline_receiver, None
 
 
 def get_trainer(

@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
 
-from .darts_cell import DARTSCell
-from .shapes_meta_visual_module import ShapesMetaVisualModule
-
 class Receiver(nn.Module):
     def __init__(
         self,
@@ -22,15 +19,8 @@ class Receiver(nn.Module):
         self.cell_type = cell_type
         self.device = device
 
-        # This is only used when not training using raw data
-        # self.input_module = ShapesMetaVisualModule(
-        #     hidden_size=hidden_size, dataset_type=dataset_type, sender=False
-        # )
-
         if cell_type == "lstm":
             self.rnn = nn.LSTMCell(embedding_size, hidden_size)
-        elif cell_type == "darts":
-            self.rnn = DARTSCell(embedding_size, hidden_size, genotype)
         else:
             raise ValueError(
                 "Receiver case with cell_type '{}' is undefined".format(cell_type)

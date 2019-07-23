@@ -5,8 +5,6 @@ from torch.nn import functional as F
 
 import numpy as np
 
-from .shapes_meta_visual_module import ShapesMetaVisualModule
-from .darts_cell import DARTSCell
 from .vector_quantization import to_one_hot, VectorQuantization, EmbeddingtableDistances, HardMax
 
 from helpers.utils_helper import UtilsHelper
@@ -60,8 +58,6 @@ class Sender(nn.Module):
 
         if cell_type == "lstm":
             self.rnn = nn.LSTMCell(embedding_size, hidden_size)
-        elif cell_type == "darts":
-            self.rnn = DARTSCell(embedding_size, hidden_size, genotype)
         else:
             raise ValueError(
                 "Sender case with cell_type '{}' is undefined".format(cell_type)
