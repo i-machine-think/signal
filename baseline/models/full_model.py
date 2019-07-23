@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn as nn
 
-from .shapes_cnn import ShapesCNN
+from .cnn import CNN
 
 from .receiver import Receiver
 from .messages_receiver import MessagesReceiver
@@ -32,7 +32,7 @@ class FullModel(nn.Module):
 
         self.extract_features = extract_features
         if extract_features:
-            self.visual_module = ShapesCNN(sender.hidden_size)
+            self.visual_module = CNN(sender.hidden_size)
 
         self.device = device
         self.output_len = self.sender.output_len

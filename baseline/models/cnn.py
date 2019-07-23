@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class ShapesCNN(nn.Module):
+class CNN(nn.Module):
     def __init__(self, n_out_features):
         super().__init__()
 
