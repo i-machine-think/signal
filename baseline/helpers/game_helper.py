@@ -60,7 +60,6 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             cell_type=cell_type,
             genotype=genotype,
             dataset_type=args.dataset_type,
-            inference_step=args.inference_step,
             tau=args.tau,
             vqvae=args.vqvae,
             beta=args.beta,
@@ -71,21 +70,15 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             rl=args.rl
         )
 
-        if not args.inference_step or args.multi_task:
-            baseline_receiver = ShapesReceiver(
-                args.vocab_size,
-                device,
-                embedding_size=args.embedding_size,
-                hidden_size=args.hidden_size,
-                cell_type=cell_type,
-                genotype=genotype,
-                dataset_type=args.dataset_type
-            )
-
-    if args.inference_step or args.multi_task:
-        diagnostic_receiver = MessagesReceiver(
-            num_classes_by_model= [3, 3, 2, 3, 3],
-            device=device)
+        baseline_receiver = ShapesReceiver(
+            args.vocab_size,
+            device,
+            embedding_size=args.embedding_size,
+            hidden_size=args.hidden_size,
+            cell_type=cell_type,
+            genotype=genotype,
+            dataset_type=args.dataset_type
+        )
 
     if args.sender_path:
         sender = torch.load(args.sender_path)
@@ -124,11 +117,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
 def get_trainer(
     sender,
     device,
-    inference_step,
-    multi_task,
-    multi_task_lambda,
     dataset_type,
-    step3,
     baseline_receiver = None,
     diagnostic_receiver = None,
     vqvae=False,
@@ -141,10 +130,6 @@ def get_trainer(
     return ShapesTrainer(
         sender,
         device,
-        inference_step,
-        multi_task,
-        multi_task_lambda,
-        step3,
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
         extract_features=extract_features,
@@ -160,15 +145,14 @@ def get_meta_data():
     return train_meta_data, valid_meta_data, test_meta_data
 
 
-def get_training_data(device, batch_size, k, debugging, dataset_type, step3):
+def get_training_data(device, batch_size, k, debugging, dataset_type):
     # Load data
     train_data, valid_data, test_data = get_shapes_dataloader(
         device=device,
         batch_size=batch_size,
         k=k,
         debug=debugging,
-        dataset_type=dataset_type,
-        step3=step3)
+        dataset_type=dataset_type)
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
     valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)

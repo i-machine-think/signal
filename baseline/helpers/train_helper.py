@@ -17,9 +17,7 @@ class TrainHelper():
         batch,
         optimizer,
         meta_data,
-        device,
-        inference_step,
-        multi_task):
+        device):
         """
         Train for single batch
         """
@@ -29,10 +27,7 @@ class TrainHelper():
 
         target, distractors, indices, _ = batch
 
-        if inference_step or multi_task:
-            md = torch.tensor(meta_data[indices[:,0], :], device=device, dtype=torch.int64)
-        else:
-            md = None
+        md = None
 
         loss, losses, accuracies, _ = model.forward(target, distractors, md)
 
@@ -46,27 +41,17 @@ class TrainHelper():
         dataloader,
         valid_meta_data,
         device,
-        inference_step,
-        multi_task,
-        step3,
         rl):
 
-        if multi_task:
-            loss_meter = [AverageEnsembleMeter(5), AverageMeter()]
-            acc_meter = [AverageEnsembleMeter(5), AverageMeter()]
-        elif inference_step or step3:
-            loss_meter = AverageEnsembleMeter(5)
-            acc_meter = AverageEnsembleMeter(5)
+        if not rl:
+            loss_meter = AverageMeter()
+            acc_meter = AverageMeter()
         else:
-            if not rl:
-                loss_meter = AverageMeter()
-                acc_meter = AverageMeter()
-            else:
-                combined_loss_meter = AverageMeter()
-                hinge_loss_meter = AverageMeter()
-                rl_loss_meter = AverageMeter()
-                entropy_meter = AverageMeter()
-                acc_meter = AverageMeter()
+            combined_loss_meter = AverageMeter()
+            hinge_loss_meter = AverageMeter()
+            rl_loss_meter = AverageMeter()
+            entropy_meter = AverageMeter()
+            acc_meter = AverageMeter()
 
         messages = []
 
@@ -74,38 +59,20 @@ class TrainHelper():
         for batch in dataloader:
             target, distractors, indices, lkey = batch
 
-            if inference_step or multi_task:
-                vmd = torch.tensor(valid_meta_data[indices[:, 0], :], device=device, dtype=torch.int64)
-            else:
-                vmd = None
+            vmd = None
 
             _, loss_item, acc, msg = model.forward(target, distractors, vmd)
 
-            if multi_task:
-                loss_meter[0].update(loss_item[0])
-                loss_meter[1].update(loss_item[1])
-
-                acc_meter[0].update(acc[0])
-                acc_meter[1].update(acc[1])
-            elif step3:
-                lkey = torch.tensor(list(map(int, lkey)))
-                lkey_stack = torch.stack([lkey == 0, lkey == 1, lkey == 2, lkey == 3, lkey == 4])
-                acc = (torch.sum(lkey_stack.cpu().float() * acc.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).numpy()
-                loss_item = (torch.sum(lkey_stack.cpu().float() * loss_item.cpu().float(), dim=1)/torch.sum(lkey_stack.cpu().float(),dim=1)).detach().numpy()
+            if not rl:
                 loss_meter.update(loss_item)
                 acc_meter.update(acc)
-
             else:
-                if not rl:
-                    loss_meter.update(loss_item)
-                    acc_meter.update(acc)
-                else:
-                    combined_loss, hinge_loss, rl_loss, entropy = loss_item
-                    combined_loss_meter.update(combined_loss)
-                    hinge_loss_meter.update(hinge_loss)
-                    rl_loss_meter.update(rl_loss)
-                    entropy_meter.update(entropy)
-                    acc_meter.update(acc)
+                combined_loss, hinge_loss, rl_loss, entropy = loss_item
+                combined_loss_meter.update(combined_loss)
+                hinge_loss_meter.update(hinge_loss)
+                rl_loss_meter.update(rl_loss)
+                entropy_meter.update(entropy)
+                acc_meter.update(acc)
 
 
             messages.append(msg)
@@ -150,14 +117,6 @@ class TrainHelper():
             name += "_debug"
         if params.sender_path or params.receiver_path:
             name += "_loaded_from_path"
-        if params.inference_step:
-            name += "_inference"
-        if params.step3:
-            name += "_step3"
-        if params.multi_task:
-            name += "_multi"
-            if params.multi_task_lambda:
-                name += f'_lambda_{params.multi_task_lambda}'
 
         return name
 

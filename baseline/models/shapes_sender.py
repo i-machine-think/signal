@@ -26,7 +26,6 @@ class ShapesSender(nn.Module):
         genotype=None,
         dataset_type="meta",
         reset_params=True,
-        inference_step=False,
         tau=1.2,
         vqvae=False, # If True, use VQ instead of Gumbel Softmax
         discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
@@ -58,7 +57,6 @@ class ShapesSender(nn.Module):
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.greedy = greedy
-        self.inference_step = inference_step
 
         if cell_type == "lstm":
             self.rnn = nn.LSTMCell(embedding_size, hidden_size)

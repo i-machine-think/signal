@@ -147,7 +147,7 @@ def generate_image(
         ctx = cairo.Context(surf)
         ctx.set_source_rgb(0.0, 0.0, 0.0)
         ctx.paint()
-        
+
         shapes = [[None for c in range(N_CELLS)] for r in range(N_CELLS)]
         colors = [[None for c in range(N_CELLS)] for r in range(N_CELLS)]
         sizes = [[None for c in range(N_CELLS)] for r in range(N_CELLS)]
@@ -189,7 +189,7 @@ def generate_image(
              new_vertical_position,
              new_horizontal_position,
              ctx)
-        
+
         value_to_change += 1
 
         metadata = {"shapes": shapes, "colors": colors, "sizes": sizes}
@@ -211,44 +211,6 @@ def get_random_set(target_images, all_images):
     print(target, all_images[target])
     return target_images[target], all_images[target]
 
-def generate_step3_dataset():
-    print('Running step 3 - generating dataset')
-
-    # From Serhii's original experiment
-    train_size = 74504
-    valid_size = 8279
-    test_size = 40504
-
-    id_symbols = [b+a for b in ascii_lowercase for a in ascii_lowercase]
-
-    save_step3_datasets(train_size, id_symbols, 'train')
-    save_step3_datasets(valid_size, id_symbols, 'valid')
-    save_step3_datasets(test_size, id_symbols, 'test')
-
-def save_step3_datasets(n, id_symbols, dataset):
-    ids = 0
-    all_targets = {}
-    all_distractors = {}
-    while n > 0:
-        ids += 1
-        target_imgs, distractor_imgs = generate_property_set(id_symbols[ids])
-        n -= len(target_imgs)
-        all_targets.update(target_imgs)
-        all_distractors.update(distractor_imgs)
-
-    if not os.path.exists('data/step3'):
-        os.makedirs('data/step3')
-
-    print(f'Save {dataset} dataset for target/distractor dictionaries')
-    pickle_target = open(f'data/step3/target_dict.{dataset}.p','wb')
-    pickle.dump(all_targets, pickle_target)
-    pickle_target.close()
-
-    pickle_distractors = open(f'data/step3/distractor_dict.{dataset}.p','wb')
-    pickle.dump(all_distractors, pickle_distractors)
-    pickle_distractors.close()
-
-
 def generate_property_set(id_symbol):
     image_properties = list(map(int, ImageProperty))
     seed = 42
@@ -265,7 +227,7 @@ def generate_property_set(id_symbol):
                             target_image, current_images = generate_image(seed, horizontal_position, vertical_position, shape, color, size, image_property)
                             all_images[f'{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}'] = current_images
                             target_images[f'{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}'] = target_image
-    
+
     return target_images, all_images
 
     # pickle_target = open(f'data/target_dict_{str(len(target_images))}.p','wb')

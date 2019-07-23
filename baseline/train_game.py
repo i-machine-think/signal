@@ -38,16 +38,13 @@ def parse_arguments(args):
     parser.add_argument("--max-length",type=int,default=10,metavar="N",help="max sentence length allowed for communication (default: 10)",)
     parser.add_argument("--k",type=int,default=3,metavar="N",help="Number of distractors (default: 3)",)
     parser.add_argument("--vocab-size",type=int,default=25,metavar="N",help="Size of vocabulary (default: 25)",)
-    parser.add_argument("--darts",help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",action="store_true",default=False,)
-    parser.add_argument("--num-nodes",type=int,default=4,metavar="N",help="Size of darts cell to use with random-darts (default: 4)",)
     parser.add_argument("--lr",type=float,default=1e-3,metavar="N",help="Adam learning rate (default: 1e-3)",)
     parser.add_argument("--freeze-sender",help="Freeze sender weights (do not train) ",action="store_true",)
     parser.add_argument("--freeze-receiver",help="Freeze receiver weights (do not train) ",action="store_true",)
-    parser.add_argument("--obverter-setup",help="Enable obverter setup with shapes",action="store_true",)
-    parser.add_argument("--inference-step",action="store_true",help="Use inference step receiver model",)
-    parser.add_argument("--step3",help="Run with property specific distractors",action="store_true",)
-    parser.add_argument("--multi-task",help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",action="store_true",)
-    parser.add_argument("--multi-task-lambda",type=float,default=0.5,help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",)
+
+    parser.add_argument("--darts",help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",action="store_true",default=False,)
+    parser.add_argument("--num-nodes",type=int,default=4,metavar="N",help="Size of darts cell to use with random-darts (default: 4)",)
+
     parser.add_argument("--tau",type=float,default=1.2,help="temperature parameter for softmax distributions")
     parser.add_argument("--vqvae",help="switch for using vector quantization (default:False)",action="store_true",)
     parser.add_argument("--beta",type=float,default=0.25,help="weighting factor for loss-terms 2 and 3 in VQ-VAE",)
@@ -167,11 +164,7 @@ def baseline(args):
     model = get_trainer(
         sender,
         device,
-        args.inference_step,
-        args.multi_task,
-        args.multi_task_lambda,
         args.dataset_type,
-        args.step3,
         baseline_receiver=baseline_receiver,
         diagnostic_receiver=diagnostic_receiver,
         vqvae=args.vqvae,
@@ -200,8 +193,7 @@ def baseline(args):
         batch_size=args.batch_size,
         k=args.k,
         debugging=args.debugging,
-        dataset_type=args.dataset_type,
-        step3=args.step3,)
+        dataset_type=args.dataset_type,)
 
     train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
 
@@ -237,31 +229,6 @@ def baseline(args):
     converged = False
 
     start_time = time.time()
-    if args.multi_task:
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Base Acc-Base | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>9.6f} {:>8.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
-    if args.inference_step:
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
-
-        # writers = [
-        #     SummaryWriter(logdir=f'{run_folder}/Color'),
-        #     SummaryWriter(logdir=f'{run_folder}/Shape'),
-        #     SummaryWriter(logdir=f'{run_folder}/Size'),
-        #     SummaryWriter(logdir=f'{run_folder}/Vertical_position'),
-        #     SummaryWriter(logdir=f'{run_folder}/Horizontal_position')
-        # ]
-    if args.step3:
-        # The data is saved according to the following sequence [hp,vp,sh,co,si]
-        # Thus it should be checked still, with the order in the print statements
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-PosH Loss-PosW Loss-Color Loss-Shape Loss-Size | Acc-PosH Acc-PosW Acc-Color Acc-Shape Acc-Size | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
 
     if args.test_mode:
         test_loss_meter, test_acc_meter, _ = train_helper.evaluate(
@@ -269,17 +236,10 @@ def baseline(args):
             test_data,
             test_meta_data,
             device,
-            args.inference_step,
-            args.multi_task,
-            args.step3,
             args.rl)
 
-        if args.multi_task:
-            average_test_accuracy = args.multi_task_lambda * test_acc_meter[0].avg + (1 - args.multi_task_lambda) * test_acc_meter[1].avg
-            average_test_loss = args.multi_task_lambda * test_loss_meter[0].avg + (1 - args.multi_task_lambda) * test_loss_meter[1].avg
-        else:
-            average_test_accuracy = test_acc_meter.avg
-            average_test_loss = test_loss_meter.avg
+        average_test_accuracy = test_acc_meter.avg
+        average_test_loss = test_loss_meter.avg
 
         print(f'TEST results: loss: {average_test_loss} | accuracy: {average_test_accuracy}')
         return
@@ -298,7 +258,7 @@ def baseline(args):
 
             ### !!! This is the complete training procedure. Rest is only logging!
             _, _ = train_helper.train_one_batch(
-                model, train_batch, optimizer, train_meta_data, device, args.inference_step, args.multi_task)
+                model, train_batch, optimizer, train_meta_data, device)
 
             if iteration % args.log_interval == 0:
 
@@ -308,9 +268,6 @@ def baseline(args):
                         valid_data,
                         valid_meta_data,
                         device,
-                        args.inference_step,
-                        args.multi_task,
-                        args.step3,
                         args.rl)
                 else:
                     valid_loss_meter, hinge_loss_meter, rl_loss_meter, entropy_meter, valid_acc_meter, _ = train_helper.evaluate(
@@ -318,18 +275,12 @@ def baseline(args):
                         valid_data,
                         valid_meta_data,
                         device,
-                        args.inference_step,
-                        args.multi_task,
-                        args.step3,
                         args.rl
                     )
 
                 new_best = False
 
-                if args.multi_task:
-                    average_valid_accuracy = args.multi_task_lambda * valid_acc_meter[0].avg + (1 - args.multi_task_lambda) * valid_acc_meter[1].avg
-                else:
-                    average_valid_accuracy = valid_acc_meter.avg
+                average_valid_accuracy = valid_acc_meter.avg
 
                 if average_valid_accuracy < best_accuracy: # No new best found. May lead to early stopping
                     current_patience -= 1
@@ -347,77 +298,26 @@ def baseline(args):
 
                 # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
                 if not args.disable_print:
-                    if args.multi_task:
-                        print(log_template.format(
-                            time.time()-start_time,
-                            epoch,
-                            iteration,
-                            1 + iteration,
-                            args.iterations,
-                            100. * (1+iteration) / args.iterations,
-                            valid_loss_meter[0].avg,
-                            valid_acc_meter[0].avg,
-                            valid_loss_meter[1].avg,
-                            valid_acc_meter[1].avg,
-                            valid_loss_meter[0].averages[0],
-                            valid_loss_meter[0].averages[1],
-                            valid_loss_meter[0].averages[2],
-                            valid_loss_meter[0].averages[3],
-                            valid_loss_meter[0].averages[4],
-                            valid_acc_meter[0].averages[0],
-                            valid_acc_meter[0].averages[1],
-                            valid_acc_meter[0].averages[2],
-                            valid_acc_meter[0].averages[3],
-                            valid_acc_meter[0].averages[4],
-                            "BEST" if new_best else ""
-                        ))
-                    elif args.inference_step or args.step3:
-                        print(log_template.format(
-                            time.time()-start_time,
-                            epoch,
-                            iteration,
-                            1 + iteration,
-                            args.iterations,
-                            100. * (1+iteration) / args.iterations,
-                            valid_loss_meter.avg,
-                            valid_acc_meter.avg,
-                            valid_loss_meter.averages[0],
-                            valid_loss_meter.averages[1],
-                            valid_loss_meter.averages[2],
-                            valid_loss_meter.averages[3],
-                            valid_loss_meter.averages[4],
-                            valid_acc_meter.averages[0],
-                            valid_acc_meter.averages[1],
-                            valid_acc_meter.averages[2],
-                            valid_acc_meter.averages[3],
-                            valid_acc_meter.averages[4],
-                            "BEST" if new_best else ""
-                        ))
 
-                        # for i in range(5):
-                        #     writers[i].add_scalar('accuracy', valid_acc_meter.averages[i], global_step=iteration)
-                        #     writers[i].add_scalar('loss', valid_loss_meter.averages[i], global_step=iteration)
-
+                    if not args.rl:
+                        print(
+                            "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
+                                iteration,
+                                args.iterations,
+                                valid_loss_meter.avg,
+                                valid_acc_meter.avg)
+                        )
                     else:
-                        if not args.rl:
-                            print(
-                                "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
-                                    iteration,
-                                    args.iterations,
-                                    valid_loss_meter.avg,
-                                    valid_acc_meter.avg)
-                            )
-                        else:
-                            print(
-                                "{}/{} Iterations: val loss: {}, val hinge loss: {}, val rl loss: {}, val entropy: {}, val accuracy: {}".format(
-                                    iteration,
-                                    args.iterations,
-                                    valid_loss_meter.avg,
-                                    hinge_loss_meter.avg,
-                                    rl_loss_meter.avg,
-                                    entropy_meter.avg,
-                                    valid_acc_meter.avg)
-                            )
+                        print(
+                            "{}/{} Iterations: val loss: {}, val hinge loss: {}, val rl loss: {}, val entropy: {}, val accuracy: {}".format(
+                                iteration,
+                                args.iterations,
+                                valid_loss_meter.avg,
+                                hinge_loss_meter.avg,
+                                rl_loss_meter.avg,
+                                entropy_meter.avg,
+                                valid_acc_meter.avg)
+                        )
 
                 iterations.append(iteration)
                 losses.append(valid_loss_meter.avg)

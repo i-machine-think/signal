@@ -16,10 +16,6 @@ class ShapesTrainer(nn.Module):
             self,
             sender: ShapesSender,
             device,
-            inference_step,
-            multi_task,
-            multi_task_lambda,
-            step3,
             baseline_receiver: ShapesReceiver = None,
             diagnostic_receiver: MessagesReceiver = None,
             extract_features=False,
@@ -39,10 +35,6 @@ class ShapesTrainer(nn.Module):
             self.visual_module = ShapesCNN(sender.hidden_size)
 
         self.device = device
-        self.inference_step = inference_step
-        self.step3 = step3
-        self.multi_task = multi_task
-        self.multi_task_lambda = multi_task_lambda
         self.output_len = self.sender.output_len
         self.vqvae = vqvae
         self.rl = rl
@@ -103,89 +95,60 @@ class ShapesTrainer(nn.Module):
             return messages
 
         final_loss = 0
-        if self.inference_step or self.multi_task:
-            out = self.diagnostic_receiver.forward(messages, meta_data)
 
-            loss = 0
+        r_transform, _ = self.baseline_receiver.forward(messages=messages) # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
 
-            inference_accuracies = np.zeros((len(out),))
-            inference_losses = np.zeros((len(out),))
+        hinge_loss = 0
 
-            for i, out_property in enumerate(out):
-                current_targets = meta_data[:, i]
+        target = target.view(batch_size, 1, -1)
+        r_transform = r_transform.view(batch_size, -1, 1)
 
-                current_loss = nn.functional.cross_entropy(out_property, current_targets)
+        target_score = torch.bmm(target, r_transform).squeeze()  # scalars (over batch). Does a batch matrix multiplication
 
-                loss += current_loss
-                inference_losses[i] = current_loss.item()
-                inference_accuracies[i] = torch.mean((torch.argmax(out_property, dim=1) == current_targets).float()).item()
+        all_scores = torch.zeros((batch_size, 1 + len(distractors)))
 
-            if not self.multi_task:
-                return loss, inference_losses, inference_accuracies, messages
+        target_index = 0
+        all_scores[:, target_index] = target_score
 
-            final_loss = self.multi_task_lambda * loss
-
-        if not self.inference_step or self.multi_task:
-            r_transform, _ = self.baseline_receiver.forward(messages=messages) # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
-
-            hinge_loss = 0
-
-            target = target.view(batch_size, 1, -1)
-            r_transform = r_transform.view(batch_size, -1, 1)
-
-            target_score = torch.bmm(target, r_transform).squeeze()  # scalars (over batch). Does a batch matrix multiplication
-
-            all_scores = torch.zeros((batch_size, 1 + len(distractors)))
-
-            target_index = 0
-            all_scores[:, target_index] = target_score
-
-            i = 0
-            for d in distractors:
-                if i == target_index:
-                    i += 1
-
-                d = d.view(batch_size, 1, -1)
-                d_score = torch.bmm(d, r_transform).squeeze()
-                all_scores[:, i] = d_score
-                hinge_loss += torch.max(
-                    torch.tensor(0.0, device=self.device), 1.0 -
-                    target_score + d_score
-                ) # This creates the sum in equation (1) of the original paper!
+        i = 0
+        for d in distractors:
+            if i == target_index:
                 i += 1
 
-            # Calculate accuracy
-            all_scores = torch.exp(all_scores)
-            _, max_idx = torch.max(all_scores, 1)
+            d = d.view(batch_size, 1, -1)
+            d_score = torch.bmm(d, r_transform).squeeze()
+            all_scores[:, i] = d_score
+            hinge_loss += torch.max(
+                torch.tensor(0.0, device=self.device), 1.0 -
+                target_score + d_score
+            ) # This creates the sum in equation (1) of the original paper!
+            i += 1
 
-            accuracy = max_idx == target_index # model liegt "richtig", wenn die dot-product similarity zwischen target und Ergebnis größer ist als die mit allen Distractors.
-            accuracy = accuracy.to(dtype=torch.float32)
+        # Calculate accuracy
+        all_scores = torch.exp(all_scores)
+        _, max_idx = torch.max(all_scores, 1)
 
-            # print(type(torch.mean(hinge_loss)), type(hinge_loss), type(accuracy))
-            # print((torch.mean(hinge_loss).shape), (hinge_loss.shape), (accuracy.shape))
-            if self.step3:
-                return torch.mean(hinge_loss), hinge_loss, accuracy, messages
+        accuracy = max_idx == target_index # model liegt "richtig", wenn die dot-product similarity zwischen target und Ergebnis größer ist als die mit allen Distractors.
+        accuracy = accuracy.to(dtype=torch.float32)
 
-            baseline_accuracy = torch.mean(accuracy).item()
-            hinge_mean_loss = torch.mean(hinge_loss) # without item, since it will be backpropagated
+        # print(type(torch.mean(hinge_loss)), type(hinge_loss), type(accuracy))
+        # print((torch.mean(hinge_loss).shape), (hinge_loss.shape), (accuracy.shape))
 
-            if self.vqvae:
-                # In the vqvae case, we add loss_2_3
-                hinge_mean_loss += loss_2_3
+        baseline_accuracy = torch.mean(accuracy).item()
+        hinge_mean_loss = torch.mean(hinge_loss) # without item, since it will be backpropagated
 
-            if self.rl:
-                logit = torch.sum(message_logits, dim=1)
-                entropy_mean = torch.mean(torch.sum(entropy, dim=1) / self.output_len)
-                self.update_baseline(hinge_mean_loss)
-                rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * logit)
-                final_loss = hinge_mean_loss + rl_mean_loss - self.entropy_coefficient*entropy_mean
-                return final_loss, (final_loss.item(), hinge_mean_loss.item(), rl_mean_loss.item(), entropy_mean.item()), baseline_accuracy, messages
+        if self.vqvae:
+            # In the vqvae case, we add loss_2_3
+            hinge_mean_loss += loss_2_3
 
-            hinge_mean_loss_item = hinge_mean_loss.item()
+        if self.rl:
+            logit = torch.sum(message_logits, dim=1)
+            entropy_mean = torch.mean(torch.sum(entropy, dim=1) / self.output_len)
+            self.update_baseline(hinge_mean_loss)
+            rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * logit)
+            final_loss = hinge_mean_loss + rl_mean_loss - self.entropy_coefficient*entropy_mean
+            return final_loss, (final_loss.item(), hinge_mean_loss.item(), rl_mean_loss.item(), entropy_mean.item()), baseline_accuracy, messages
 
-            if not self.multi_task:
-                return hinge_mean_loss, hinge_mean_loss_item, baseline_accuracy, messages
+        hinge_mean_loss_item = hinge_mean_loss.item()
 
-            final_loss += (1 - self.multi_task_lambda) * hinge_mean_loss
-
-            return final_loss, (inference_losses, hinge_mean_loss_item), (inference_accuracies, baseline_accuracy), messages
+        return hinge_mean_loss, hinge_mean_loss_item, baseline_accuracy, messages

@@ -93,33 +93,12 @@ def parse_arguments(args):
         "--device",
         type=str,
         help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
-    
+
     parser.add_argument(
         "--training-sample-count",
         type=int,
         default=None,
         help="How many models should be sampled while training. Default is None, meaning that all models will be used")
-    parser.add_argument(
-        "--inference",
-        action="store_true",
-        help="If sender model trained using inference step is used"
-    )
-    parser.add_argument(
-        "--step3",
-        help="If sender model trained using step3 is used",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task",
-        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task-lambda",
-        type=float,
-        default=0.5,
-        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
-    )
 
     args = parser.parse_args(args)
 
@@ -152,48 +131,25 @@ def print_results(accuracies_meter: AverageEnsembleMeter, losses_meter: AverageE
 def perform_iteration(model: DiagnosticEnsemble, dataloader, batch_size: int, device, sample_count=5):
     accuracies_meter = AverageEnsembleMeter(number_of_values=5)
     losses_meter = AverageEnsembleMeter(number_of_values=5)
-    
+
     for messages, properties in dataloader:
         messages = messages.long().to(device)
         properties = properties.long().to(device)
 
         current_accuracies, current_losses = model.forward(messages, properties, sample_count)
-        
+
         accuracies_meter.update(current_accuracies)
         losses_meter.update(current_losses)
 
     return accuracies_meter, losses_meter
 
-def generate_unique_name(length, vocabulary_size, seed, inference, step3, multi_task, multi_task_lambda):
+def generate_unique_name(length, vocabulary_size, seed):
     result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
-    if inference:
-        result += '_inference'
-    
-    if step3:
-        result += '_step3'
-
-    if multi_task:
-        result += '_multi'
-        if multi_task_lambda:
-            result += f'_lambda_{multi_task_lambda}'
-
     return result
 
-def generate_model_name(length, vocabulary_size, messages_seed, training_seed, inference, step3, multi_task, multi_task_lambda):
+def generate_model_name(length, vocabulary_size, messages_seed, training_seed):
     result = f'max_len_{length}_vocab_{vocabulary_size}_msg_seed_{messages_seed}_train_seed_{training_seed}'
-    if inference:
-        result += '_inference'
-    
-    if step3:
-        result += '_step3'
-
-    if multi_task:
-        result += '_multi'
-        if multi_task_lambda:
-            result += f'_lambda_{multi_task_lambda}'
-
     result += '.p'
-
     return result
 
 def save_model(path, model):
@@ -209,7 +165,7 @@ def save_model(path, model):
 def load_model(path, model):
     checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model_state_dict'])
-    
+
     for i, optimizer in enumerate(model.optimizers):
         if checkpoint[f'optimizer{i}_state_dict']:
             optimizer.load_state_dict(checkpoint[f'optimizer{i}_state_dict'])
@@ -243,21 +199,13 @@ def baseline(args):
     unique_name = generate_unique_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
-        seed=args.messages_seed,
-        inference=args.inference,
-        step3=args.step3,
-        multi_task=args.multi_task,
-        multi_task_lambda=args.multi_task_lambda)
+        seed=args.messages_seed)
 
     model_name = generate_model_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
         messages_seed=args.messages_seed,
-        training_seed=args.training_seed,
-        inference=args.inference,
-        step3=args.step3,
-        multi_task=args.multi_task,
-        multi_task_lambda=args.multi_task_lambda)
+        training_seed=args.training_seed)
 
     model_path = os.path.join(inference_path, model_name)
 
@@ -280,9 +228,9 @@ def baseline(args):
     # Setup the loss and optimizer
 
     print(header)
-    
+
     best_accuracy = -1.
-    
+
     for epoch in range(args.max_epochs):
 
         # TRAIN
@@ -304,7 +252,7 @@ def baseline(args):
 
     best_model = initialize_model(args, device, model_path)
     best_model.eval()
-    
+
     test_accuracies_meter, test_losses_meter = perform_iteration(best_model, test_dataloader, args.batch_size, device)
     print_results(test_accuracies_meter, test_losses_meter, epoch, args.max_epochs, "test", False)
 

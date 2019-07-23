@@ -8,22 +8,19 @@ from PIL import Image
 
 class ShapesDataset:
     def __init__(
-        self, features, mean=None, std=None, metadata=False, raw=False, dataset=None, step3_distractors = None, validation_set = False
+        self, features, mean=None, std=None, metadata=False, raw=False, dataset=None, validation_set = False
     ):
         self.metadata = metadata
         self.raw = raw
         self.features = features
-
-        self.obverter_setup = False
         self.dataset = dataset
-        self.step3_distractors = step3_distractors
         self.validation_set = validation_set
 
         if type(self.features) == type({}):
             self.keys = list(features.keys())
 
         if dataset is not None:
-            self.obverter_setup = True
+            pass
 
         if mean is None and type(features) == type({}):
 
@@ -59,17 +56,6 @@ class ShapesDataset:
 
             distractors = []
 
-            # distractors = self.step3_distractors[target_key]
-            # for i, d in enumerate(distractors):
-            #     distractors[i] = self.transforms(d.data)
-            for distractor_img in self.step3_distractors[target_key]:
-                # distractor_img = self.step3_distractors[target_key]
-                if self.raw:
-                    distractor_img = self.transforms(distractor_img.data)
-                distractors.append(distractor_img)
-                if len(self.step3_distractors[target_key]) == 1:
-                    distractors.append(distractor_img)
-
             if self.raw:# and not self.validation_set:
                 target_img = self.transforms(target_img)
 
@@ -78,35 +64,6 @@ class ShapesDataset:
 
             # print(len(distractors))
             return (target_img, distractors, indices, lkey)
-
-                # print('train',len(distractors))
-            # else:
-            #     target_img = []
-            #     for i in range(5):
-            #         list_key[5] = str(i)
-            #         class_key = ''.join(list_key)
-            #         # class_key = target_key#'111111ab'
-            #         # if i < 4:
-            #         #     class_key = self.keys[indices[i]]
-            #         # target_key = self.keys[np.random.randint(max(indices))]
-            #         # list_key = list(target_key)
-            #         # list_key[5] = str(np.random.randint(0,5))
-            #         # target_key = ''.join(list_key)
-
-            #         # class_key = target_key
-            #         # if i == 2:
-            #         #     class_key = target_key # testing related, remove when done
-            #         class_distractors = []
-            #         for distractor_img in self.step3_distractors[class_key]:
-            #             if self.raw:
-            #                 distractor_img = self.transforms(distractor_img.data)
-            #             class_distractors.append(distractor_img)
-            #         distractors.append(class_distractors)
-
-            #         targ = self.features[target_key].data
-            #         if self.raw:
-            #             targ = self.transforms(targ)
-            #         target_img.append(targ)
 
                 # return (target_img, distractors, indices, lkey)
         else:
@@ -128,12 +85,9 @@ class ShapesDataset:
         return (target_img, distractors, indices, 0)
 
     def __len__(self):
-        if self.obverter_setup:
-            return self.dataset.shape[0]
+        if type(self.features) == type({}):
+            print('Dataset size is',len(self.features))
+            return len(self.features)
         else:
-            if type(self.features) == type({}):
-                print('Dataset size is',len(self.features))
-                return len(self.features)
-            else:
-                print('Dataset size is',self.features.shape[0])
-                return self.features.shape[0]
+            print('Dataset size is',self.features.shape[0])
+            return self.features.shape[0]
