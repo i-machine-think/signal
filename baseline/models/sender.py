@@ -11,7 +11,7 @@ from .vector_quantization import to_one_hot, VectorQuantization, EmbeddingtableD
 
 from helpers.utils_helper import UtilsHelper
 
-class ShapesSender(nn.Module):
+class Sender(nn.Module):
     def __init__(
         self,
         vocab_size, # Specifies number of words in baseline setting. In VQ-VAE Setting: Dimension of embedding space.
@@ -64,7 +64,7 @@ class ShapesSender(nn.Module):
             self.rnn = DARTSCell(embedding_size, hidden_size, genotype)
         else:
             raise ValueError(
-                "ShapesSender case with cell_type '{}' is undefined".format(cell_type)
+                "Sender case with cell_type '{}' is undefined".format(cell_type)
             )
 
         self.embedding = nn.Parameter(

@@ -4,7 +4,7 @@ import torch.nn as nn
 from .darts_cell import DARTSCell
 from .shapes_meta_visual_module import ShapesMetaVisualModule
 
-class ShapesReceiver(nn.Module):
+class Receiver(nn.Module):
     def __init__(
         self,
         vocab_size,
@@ -33,7 +33,7 @@ class ShapesReceiver(nn.Module):
             self.rnn = DARTSCell(embedding_size, hidden_size, genotype)
         else:
             raise ValueError(
-                "ShapesReceiver case with cell_type '{}' is undefined".format(cell_type)
+                "Receiver case with cell_type '{}' is undefined".format(cell_type)
             )
 
         self.embedding = nn.Parameter(

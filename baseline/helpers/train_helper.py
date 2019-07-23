@@ -5,7 +5,7 @@ import torch
 from metrics.average_meter import AverageMeter
 from metrics.average_ensemble_meter import AverageEnsembleMeter
 
-from models.shapes_trainer import ShapesTrainer
+from models.full_model import FullModel
 
 class TrainHelper():
     def __init__(self, device):
@@ -13,7 +13,7 @@ class TrainHelper():
 
     def train_one_batch(
         self,
-        model: ShapesTrainer,
+        model: FullModel,
         batch,
         optimizer,
         meta_data,

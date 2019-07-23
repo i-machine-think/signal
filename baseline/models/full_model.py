@@ -5,18 +5,18 @@ import torch.nn as nn
 
 from .shapes_cnn import ShapesCNN
 
-from .shapes_receiver import ShapesReceiver
+from .receiver import Receiver
 from .messages_receiver import MessagesReceiver
-from .shapes_sender import ShapesSender
+from .sender import Sender
 
 import numpy as np
 
-class ShapesTrainer(nn.Module):
+class FullModel(nn.Module):
     def __init__(
             self,
-            sender: ShapesSender,
+            sender: Sender,
             device,
-            baseline_receiver: ShapesReceiver = None,
+            baseline_receiver: Receiver = None,
             diagnostic_receiver: MessagesReceiver = None,
             extract_features=False,
             vqvae=False,

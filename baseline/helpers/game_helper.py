@@ -7,15 +7,15 @@ from .dataloader_helper import get_shapes_features, get_shapes_dataloader
 
 from enums.dataset_type import DatasetType
 
-from models.shapes_receiver import ShapesReceiver
-from models.shapes_sender import ShapesSender
-from models.shapes_trainer import ShapesTrainer
+from models.receiver import Receiver
+from models.sender import Sender
+from models.full_model import FullModel
 from models.shapes_single_model import ShapesSingleModel
 from models.shapes_meta_visual_module import ShapesMetaVisualModule
 from models.messages_receiver import MessagesReceiver
 
 
-def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, MessagesReceiver):
+def get_sender_receiver(device, args) -> (Sender, Receiver, MessagesReceiver):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
 
@@ -49,7 +49,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             dataset_type=args.dataset_type,
         )
     else:
-        sender = ShapesSender(
+        sender = Sender(
             args.vocab_size,
             args.max_length,
             vocab.bound_idx,
@@ -70,7 +70,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             rl=args.rl
         )
 
-        baseline_receiver = ShapesReceiver(
+        baseline_receiver = Receiver(
             args.vocab_size,
             device,
             embedding_size=args.embedding_size,
@@ -127,7 +127,7 @@ def get_trainer(
     myopic_coefficient=0.1):
     extract_features = dataset_type == "raw"
 
-    return ShapesTrainer(
+    return FullModel(
         sender,
         device,
         baseline_receiver=baseline_receiver,

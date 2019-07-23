@@ -4,14 +4,14 @@ Dataset size is 8279
 Dataset size is 40504
 Extracting features
 ----------------------------------------
-Model name: raw_e_64_h_64_lr_0.001_max_len_10_k_3_vocab_25_seed_114_btch_size_1024 
+Model name: raw_e_64_h_64_lr_0.001_max_len_10_k_3_vocab_25_seed_114_btch_size_1024
 |V|: 25
 L: 10
-ShapesSender(
+Sender(
   (rnn): LSTMCell(64, 64)
   (linear_out): Linear(in_features=64, out_features=25, bias=True)
 )
-ShapesReceiver(
+Receiver(
   (rnn): LSTMCell(64, 64)
 )
 Total number of parameters: 84489
@@ -21,14 +21,14 @@ Dataset size is 74504
 Dataset size is 8279
 Dataset size is 40504
 ----------------------------------------
-Model name: raw_e_64_h_64_lr_0.001_max_len_10_k_3_vocab_25_seed_114_btch_size_1024 
+Model name: raw_e_64_h_64_lr_0.001_max_len_10_k_3_vocab_25_seed_114_btch_size_1024
 |V|: 25
 L: 10
-ShapesSender(
+Sender(
   (rnn): LSTMCell(64, 64)
   (linear_out): Linear(in_features=64, out_features=25, bias=True)
 )
-ShapesReceiver(
+Receiver(
   (rnn): LSTMCell(64, 64)
 )
 Total number of parameters: 84489
@@ -44,14 +44,14 @@ Dataset size is 74504
 Dataset size is 8279
 Dataset size is 40504
 ----------------------------------------
-Model name: raw_e_64_h_64_lr_0.001_max_len_10_k_3_vocab_25_seed_114_btch_size_1024 
+Model name: raw_e_64_h_64_lr_0.001_max_len_10_k_3_vocab_25_seed_114_btch_size_1024
 |V|: 25
 L: 10
-ShapesSender(
+Sender(
   (rnn): LSTMCell(64, 64)
   (linear_out): Linear(in_features=64, out_features=25, bias=True)
 )
-ShapesReceiver(
+Receiver(
   (rnn): LSTMCell(64, 64)
 )
 Total number of parameters: 84489
