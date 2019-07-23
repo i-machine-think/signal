@@ -25,7 +25,9 @@ class ShapesTrainer(nn.Module):
             extract_features=False,
             vqvae=False,
             rl=False,
-            entropy_coefficient=1.0):
+            entropy_coefficient=1.0,
+            myopic=False,
+            myopic_coefficient=0.1):
         super().__init__()
 
         self.sender = sender
@@ -47,6 +49,8 @@ class ShapesTrainer(nn.Module):
         self.entropy_coefficient = entropy_coefficient
         self.n_baseline_updates = 0
         self.hinge_loss_baseline = 0
+        self.myopic = myopic
+        self.myopic_coefficient = myopic_coefficient
 
 
     def _pad(self, messages, seq_lengths):
@@ -69,8 +73,15 @@ class ShapesTrainer(nn.Module):
     def update_baseline(self, value):
         # Compute the mean of the hinge losses seen so far.
         # Acts as a baseline for stabilizing RL.
-        self.n_baseline_updates += 1
-        self.hinge_loss_baseline += (value.detach().item() - self.hinge_loss_baseline) / self.n_baseline_updates
+        if self.n_baseline_updates==0:
+            self.n_baseline_updates+=1
+            self.hinge_loss_baseline = value.detach().item()
+        else:
+            if self.myopic:
+                self.hinge_loss_baseline = (1-self.myopic_coefficient)*self.hinge_loss_baseline + self.myopic_coefficient*value.detach().item()
+            else:
+                self.n_baseline_updates += 1
+                self.hinge_loss_baseline += (value.detach().item() - self.hinge_loss_baseline) / self.n_baseline_updates
 
     def forward(self, target, distractors, meta_data = None):
         batch_size = target.shape[0]

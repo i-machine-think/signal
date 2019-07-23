@@ -61,7 +61,7 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             genotype=genotype,
             dataset_type=args.dataset_type,
             inference_step=args.inference_step,
-            tau=args.tau
+            tau=args.tau,
             vqvae=args.vqvae,
             beta=args.beta,
             discrete_latent_number=args.discrete_latent_number,
@@ -133,7 +133,9 @@ def get_trainer(
     diagnostic_receiver = None,
     vqvae=False,
     rl=False,
-    entropy_coefficient=1.0):
+    entropy_coefficient=1.0,
+    myopic=False,
+    myopic_coefficient=0.1):
     extract_features = dataset_type == "raw"
 
     return ShapesTrainer(
@@ -147,7 +149,9 @@ def get_trainer(
         diagnostic_receiver=diagnostic_receiver,
         extract_features=extract_features,
         vqvae=vqvae,
-        rl=rl)
+        rl=rl,
+        myopic=myopic,
+        myopic_coefficient=myopic_coefficient)
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)

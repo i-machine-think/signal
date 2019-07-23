@@ -57,6 +57,8 @@ def parse_arguments(args):
     parser.add_argument("--gumbel_softmax",help="switch for using straight-through gumbel_softmax in the vqvae-discrete_communication case",action="store_true",)
     parser.add_argument("--rl",help="switch for using REINFORCE for training the sender",action="store_true")
     parser.add_argument("--entropy_coefficient",type=float,default=1.0,help="weighting factor for the entropy that's increased in RL")
+    parser.add_argument("--myopic",help="switch for forgetting old hinge losses faster in the RL setting",action="store_true")
+    parser.add_argument("--myopic_coefficient",type=float,default=0.1,help="coefficient for how much to update in the direction of new loss-term in myopic case")
 
     # Arguments not specific to the training process itself
     parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)
@@ -174,7 +176,9 @@ def baseline(args):
         diagnostic_receiver=diagnostic_receiver,
         vqvae=args.vqvae,
         rl=args.rl,
-        entropy_coefficient=args.entropy_coefficient)
+        entropy_coefficient=args.entropy_coefficient,
+        myopic=args.myopic,
+        myopic_coefficient=args.myopic_coefficient)
 
     model_path = file_helper.create_unique_model_path(model_name)
 
