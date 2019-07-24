@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class Receiver(nn.Module):
     def __init__(self,
                  vocab_size,
