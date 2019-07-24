@@ -9,37 +9,38 @@ from .vector_quantization import to_one_hot, VectorQuantization, EmbeddingtableD
 
 from helpers.utils_helper import UtilsHelper
 
-class Sender(nn.Module):
-    def __init__(
-        self,
-        vocab_size, # Specifies number of words in baseline setting. In VQ-VAE Setting: Dimension of embedding space.
-        output_len, # called max_length in other files
-        sos_id,
-        device,
-        eos_id=None,
-        embedding_size=256,
-        hidden_size=512,
-        greedy=False,
-        cell_type="lstm",
-        genotype=None,
-        dataset_type="meta",
-        reset_params=True,
-        tau=1.2,
-        vqvae=False, # If True, use VQ instead of Gumbel Softmax
-        discrete_latent_number=25, # Number of embedding vectors e_i in embedding table in vqvae setting
-        discrete_latent_dimension=25, #dimension of embedding vectors
-        beta=0.25, # Weighting of loss terms 2 and 3 in VQ-VAE
-        discrete_communication=False,
-        gumbel_softmax=False,
-        rl=False
-        ):
 
+class Sender(nn.Module):
+    def __init__(self,
+                 vocab_size,  # Specifies number of words in baseline setting. In VQ-VAE Setting:
+                 # Dimension of embedding space.
+                 output_len,  # called max_length in other files
+                 sos_id,
+                 device,
+                 eos_id=None,
+                 embedding_size=256,
+                 hidden_size=512,
+                 greedy=False,
+                 cell_type="lstm",
+                 genotype=None,
+                 dataset_type="meta",
+                 reset_params=True,
+                 tau=1.2,
+                 vqvae=False,  # If True, use VQ instead of Gumbel Softmax
+                 discrete_latent_number=25,  # Number of embedding vectors e_i in embedding table in vqvae setting
+                 discrete_latent_dimension=25,  # dimension of embedding vectors
+                 beta=0.25,  # Weighting of loss terms 2 and 3 in VQ-VAE
+                 discrete_communication=False,
+                 gumbel_softmax=False,
+                 rl=False):
         super().__init__()
         if vqvae:
-            if discrete_communication==False:
-                assert vocab_size==discrete_latent_dimension, "When using continuous communication, vocab_size = discrete_latent_dimension"
+            if discrete_communication:
+                assert vocab_size == discrete_latent_number, "When using discrete communication, " \
+                                                             "vocab_size = discrete_latent_number"
             else:
-                assert vocab_size==discrete_latent_number, "When using discrete communication, vocab_size = discrete_latent_number"
+                assert vocab_size == discrete_latent_dimension, "When using continuous communication, " \
+                                                                "vocab_size = discrete_latent_dimension"
         self.vocab_size = vocab_size
         self.cell_type = cell_type
         self.output_len = output_len
@@ -68,21 +69,21 @@ class Sender(nn.Module):
         )
 
         if not vqvae:
-            self.linear_out = nn.Linear(hidden_size, vocab_size) # from a hidden state to the vocab
+            self.linear_out = nn.Linear(hidden_size, vocab_size)  # from a hidden state to the vocab
         else:
             self.linear_out = nn.Linear(hidden_size, discrete_latent_dimension)
         self.tau = tau
         self.vqvae = vqvae
         self.discrete_latent_number = discrete_latent_number
         self.discrete_latent_dimension = discrete_latent_dimension
-        self.discrete_communication=discrete_communication
-        self.beta=beta
-        self.gumbel_softmax=gumbel_softmax
+        self.discrete_communication = discrete_communication
+        self.beta = beta
+        self.gumbel_softmax = gumbel_softmax
 
         if self.vqvae:
             self.e = nn.Parameter(
                 torch.empty((self.discrete_latent_number, self.discrete_latent_dimension), dtype=torch.float32)
-            ) # The discrete embedding table
+            )  # The discrete embedding table
             print("the shape of e is {}".format(self.e.shape))
             self.vq = VectorQuantization()
             if self.discrete_communication:
@@ -156,10 +157,11 @@ class Sender(nn.Module):
                 seq_pos (int): The current timestep.
         """
         max_predicted, vocab_index = torch.max(token, dim=1)
-        mask = (vocab_index == self.eos_id) * (max_predicted == 1.0) # all words in batch that are "already done"
-        mask=mask.to(self.device)
+        mask = (vocab_index == self.eos_id) * (max_predicted == 1.0)  # all words in batch that are "already done"
+        mask = mask.to(self.device)
         mask *= seq_lengths == initial_length
-        seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended. This tells the sequence to be smaller at the positions where the sentence already ended.
+        seq_lengths[mask.nonzero()] = seq_pos + 1  # start always token appended. This tells the sequence
+        # to be smaller at the positions where the sentence already ended.
 
     def calculate_token_gumbel_softmax(self, p, tau, sentence_probability, batch_size):
         if self.training:
