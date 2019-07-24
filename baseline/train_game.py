@@ -5,13 +5,20 @@ import pickle
 import argparse
 import sys
 import torch
+
+#for logging of data
 import os
 import time
+import csv
+from itertools import zip_longest
+import datetime
 
 from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data, get_meta_data
 from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
+
+from plotting import plot_data
 
 from tensorboardX import SummaryWriter
 
@@ -31,16 +38,24 @@ def parse_arguments(args):
     parser.add_argument("--max-length",type=int,default=10,metavar="N",help="max sentence length allowed for communication (default: 10)",)
     parser.add_argument("--k",type=int,default=3,metavar="N",help="Number of distractors (default: 3)",)
     parser.add_argument("--vocab-size",type=int,default=25,metavar="N",help="Size of vocabulary (default: 25)",)
-    parser.add_argument("--darts",help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",action="store_true",default=False,)
-    parser.add_argument("--num-nodes",type=int,default=4,metavar="N",help="Size of darts cell to use with random-darts (default: 4)",)
     parser.add_argument("--lr",type=float,default=1e-3,metavar="N",help="Adam learning rate (default: 1e-3)",)
     parser.add_argument("--freeze-sender",help="Freeze sender weights (do not train) ",action="store_true",)
     parser.add_argument("--freeze-receiver",help="Freeze receiver weights (do not train) ",action="store_true",)
-    parser.add_argument("--obverter-setup",help="Enable obverter setup with shapes",action="store_true",)
-    parser.add_argument("--inference-step",action="store_true",help="Use inference step receiver model",)
-    parser.add_argument("--step3",help="Run with property specific distractors",action="store_true",)
-    parser.add_argument("--multi-task",help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",action="store_true")
-    parser.add_argument("--multi-task-lambda",type=float,default=0.5,help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",)
+
+    parser.add_argument("--darts",help="Use random architecture from DARTS space instead of random LSTMCell (default: False)",action="store_true",default=False,)
+    parser.add_argument("--num-nodes",type=int,default=4,metavar="N",help="Size of darts cell to use with random-darts (default: 4)",)
+
+    parser.add_argument("--tau",type=float,default=1.2,help="temperature parameter for softmax distributions")
+    parser.add_argument("--vqvae",help="switch for using vector quantization (default:False)",action="store_true",)
+    parser.add_argument("--beta",type=float,default=0.25,help="weighting factor for loss-terms 2 and 3 in VQ-VAE",)
+    parser.add_argument("--discrete_latent_number",type=int,default=25,help="Number of embedding vectors in the VQ-VAE case",)
+    parser.add_argument("--discrete_latent_dimension",type=int,default=25,help="dimension of embedding vectors in the VQ-VAE case",)
+    parser.add_argument("--discrete_communication",help="switch for communicating discretely in the vqvae case",action="store_true",)
+    parser.add_argument("--gumbel_softmax",help="switch for using straight-through gumbel_softmax in the vqvae-discrete_communication case",action="store_true",)
+    parser.add_argument("--rl",help="switch for using REINFORCE for training the sender",action="store_true")
+    parser.add_argument("--entropy_coefficient",type=float,default=1.0,help="weighting factor for the entropy that's increased in RL")
+    parser.add_argument("--myopic",help="switch for forgetting old hinge losses faster in the RL setting",action="store_true")
+    parser.add_argument("--myopic_coefficient",type=float,default=0.1,help="coefficient for how much to update in the direction of new loss-term in myopic case")
 
     # Arguments not specific to the training process itself
     parser.add_argument("--debugging",help="Enable debugging mode (default: False)",action="store_true",)
@@ -49,11 +64,10 @@ def parse_arguments(args):
     parser.add_argument("--receiver-path",type=str,default=False,metavar="S",help="Receiver to be loaded",)
     parser.add_argument("--name",type=str,default=False,metavar="S",help="Name to append to run file name",)
     parser.add_argument("--folder",type=str,default=False,metavar="S",help="Additional folder within runs/",)
-    parser.add_argument("--disable-print",help="Disable printing", action="store_true")
-    parser.add_argument("--device",type=str,help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+    parser.add_argument("--disable-print",help="Disable printing", action="store_true",)
     parser.add_argument("--patience",type=int,default=10,help="Amount of epochs to check for not improved validation score before early stopping",)
-    parser.add_argument("--test-mode",help="Only run the saved model on the test set",action="store_true")
-    parser.add_argument("--resume-training",help="Resume the training from the saved model state",action="store_true")
+    parser.add_argument("--test-mode",help="Only run the saved model on the test set",action="store_true",)
+    parser.add_argument("--resume-training",help="Resume the training from the saved model state",action="store_true",)
 
     args = parser.parse_args(args)
 
@@ -73,8 +87,8 @@ def save_model_state(model, checkpoint_path: str, epoch: int, iteration: int, be
     if model.visual_module:
         checkpoint_state['visual_module'] = model.visual_module.state_dict()
 
-    if model.baseline_receiver:
-        checkpoint_state['baseline_receiver'] = model.baseline_receiver.state_dict()
+    if model.receiver:
+        checkpoint_state['receiver'] = model.receiver.state_dict()
 
     if model.diagnostic_receiver:
         checkpoint_state['diagnostic_receiver'] = model.diagnostic_receiver.state_dict()
@@ -102,8 +116,8 @@ def load_model_state(model, model_path):
     if 'visual_module' in checkpoint.keys() and checkpoint['visual_module']:
         model.visual_module.load_state_dict(checkpoint['visual_module'])
 
-    if 'baseline_receiver' in checkpoint.keys() and checkpoint['baseline_receiver']:
-        model.baseline_receiver.load_state_dict(checkpoint['baseline_receiver'])
+    if 'receiver' in checkpoint.keys() and checkpoint['receiver']:
+        model.receiver.load_state_dict(checkpoint['receiver'])
 
     if 'diagnostic_receiver' in checkpoint.keys() and checkpoint['diagnostic_receiver']:
         model.diagnostic_receiver.load_state_dict(checkpoint['diagnostic_receiver'])
@@ -124,13 +138,9 @@ def load_model_state(model, model_path):
 
 
 def baseline(args):
-
     args = parse_arguments(args)
 
-    if args.device:
-        device = torch.device(args.device)
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     file_helper = FileHelper()
     train_helper = TrainHelper(device)
@@ -142,25 +152,26 @@ def baseline(args):
     metrics_helper = MetricsHelper(run_folder, args.seed)
 
     # get sender and receiver models and save them
-    sender, baseline_receiver, diagnostic_receiver = get_sender_receiver(device, args)
+    sender, receiver, diagnostic_receiver = get_sender_receiver(device, args)
 
     sender_file = file_helper.get_sender_path(run_folder)
     receiver_file = file_helper.get_receiver_path(run_folder)
-    torch.save(sender, sender_file)
+    #torch.save(sender, sender_file)
 
-    if baseline_receiver:
-        torch.save(baseline_receiver, receiver_file)
+    if receiver:
+        torch.save(receiver, receiver_file)
 
     model = get_trainer(
         sender,
         device,
-        args.inference_step,
-        args.multi_task,
-        args.multi_task_lambda,
         args.dataset_type,
-        args.step3,
-        baseline_receiver=baseline_receiver,
-        diagnostic_receiver=diagnostic_receiver)
+        receiver=receiver,
+        diagnostic_receiver=diagnostic_receiver,
+        vqvae=args.vqvae,
+        rl=args.rl,
+        entropy_coefficient=args.entropy_coefficient,
+        myopic=args.myopic,
+        myopic_coefficient=args.myopic_coefficient)
 
     model_path = file_helper.create_unique_model_path(model_name)
 
@@ -182,8 +193,7 @@ def baseline(args):
         batch_size=args.batch_size,
         k=args.k,
         debugging=args.debugging,
-        dataset_type=args.dataset_type,
-        step3=args.step3,)
+        dataset_type=args.dataset_type,)
 
     train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
 
@@ -201,8 +211,8 @@ def baseline(args):
             )
         )
         print(sender)
-        if baseline_receiver:
-            print(baseline_receiver)
+        if receiver:
+            print(receiver)
 
         if diagnostic_receiver:
             print(diagnostic_receiver)
@@ -219,45 +229,28 @@ def baseline(args):
     converged = False
 
     start_time = time.time()
-    if args.multi_task:
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Base Acc-Base | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>9.6f} {:>8.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
-    if args.inference_step:
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-Color Loss-Shape Loss-Size Loss-PosH Loss-PosW | Acc-Color Acc-Shape Acc-Size Acc-PosH Acc-PosW | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
-
-        # writers = [
-        #     SummaryWriter(logdir=f'{run_folder}/Color'),
-        #     SummaryWriter(logdir=f'{run_folder}/Shape'),
-        #     SummaryWriter(logdir=f'{run_folder}/Size'),
-        #     SummaryWriter(logdir=f'{run_folder}/Vertical_position'),
-        #     SummaryWriter(logdir=f'{run_folder}/Horizontal_position')
-        # ]
-    if args.step3:
-        # The data is saved according to the following sequence [hp,vp,sh,co,si]
-        # Thus it should be checked still, with the order in the print statements
-        header = '  Time Epoch Iteration    Progress (%Epoch) | Loss-Avg  Acc-Avg | Loss-PosH Loss-PosW Loss-Color Loss-Shape Loss-Size | Acc-PosH Acc-PosW Acc-Color Acc-Shape Acc-Size | Best'
-        print(header)
-        log_template = ' '.join(
-            '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>7.6f} | {:>10.6f} {:>10.6f} {:>9.6f} {:>9.6f} {:>9.6f} | {:>9.6f} {:>9.6f} {:>8.6f} {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
 
     if args.test_mode:
         test_loss_meter, test_acc_meter, _ = train_helper.evaluate(
-            model, test_data, test_meta_data, device, args.inference_step, args.multi_task, args.step3)
+            model,
+            test_data,
+            test_meta_data,
+            device,
+            args.rl)
 
-        if args.multi_task:
-            average_test_accuracy = args.multi_task_lambda * test_acc_meter[0].avg + (1 - args.multi_task_lambda) * test_acc_meter[1].avg
-            average_test_loss = args.multi_task_lambda * test_loss_meter[0].avg + (1 - args.multi_task_lambda) * test_loss_meter[1].avg
-        else:
-            average_test_accuracy = test_acc_meter.avg
-            average_test_loss = test_loss_meter.avg
+        average_test_accuracy = test_acc_meter.avg
+        average_test_loss = test_loss_meter.avg
 
         print(f'TEST results: loss: {average_test_loss} | accuracy: {average_test_accuracy}')
         return
+
+    iterations = []
+    losses = []
+    hinge_losses = []
+    rl_losses = []
+    entropies = []
+    accuracies = []
+
 
     while iteration < args.iterations:
         for train_batch in train_data:
@@ -265,19 +258,29 @@ def baseline(args):
 
             ### !!! This is the complete training procedure. Rest is only logging!
             _, _ = train_helper.train_one_batch(
-                model, train_batch, optimizer, train_meta_data, device, args.inference_step, args.multi_task)
+                model, train_batch, optimizer, train_meta_data, device)
 
             if iteration % args.log_interval == 0:
 
-                valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
-                    model, valid_data, valid_meta_data, device, args.inference_step, args.multi_task, args.step3)
+                if not args.rl:
+                    valid_loss_meter, valid_acc_meter, _, = train_helper.evaluate(
+                        model,
+                        valid_data,
+                        valid_meta_data,
+                        device,
+                        args.rl)
+                else:
+                    valid_loss_meter, hinge_loss_meter, rl_loss_meter, entropy_meter, valid_acc_meter, _ = train_helper.evaluate(
+                        model,
+                        valid_data,
+                        valid_meta_data,
+                        device,
+                        args.rl
+                    )
 
                 new_best = False
 
-                if args.multi_task:
-                    average_valid_accuracy = args.multi_task_lambda * valid_acc_meter[0].avg + (1 - args.multi_task_lambda) * valid_acc_meter[1].avg
-                else:
-                    average_valid_accuracy = valid_acc_meter.avg
+                average_valid_accuracy = valid_acc_meter.avg
 
                 if average_valid_accuracy < best_accuracy: # No new best found. May lead to early stopping
                     current_patience -= 1
@@ -292,75 +295,78 @@ def baseline(args):
                     current_patience = args.patience
                     save_model_state(model, model_path, epoch, iteration, best_accuracy)
 
+
                 # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
                 if not args.disable_print:
-                    if args.multi_task:
-                        print(log_template.format(
-                            time.time()-start_time,
-                            epoch,
-                            iteration,
-                            1 + iteration,
-                            args.iterations,
-                            100. * (1+iteration) / args.iterations,
-                            valid_loss_meter[0].avg,
-                            valid_acc_meter[0].avg,
-                            valid_loss_meter[1].avg,
-                            valid_acc_meter[1].avg,
-                            valid_loss_meter[0].averages[0],
-                            valid_loss_meter[0].averages[1],
-                            valid_loss_meter[0].averages[2],
-                            valid_loss_meter[0].averages[3],
-                            valid_loss_meter[0].averages[4],
-                            valid_acc_meter[0].averages[0],
-                            valid_acc_meter[0].averages[1],
-                            valid_acc_meter[0].averages[2],
-                            valid_acc_meter[0].averages[3],
-                            valid_acc_meter[0].averages[4],
-                            "BEST" if new_best else ""
-                        ))
-                    elif args.inference_step or args.step3:
-                        print(log_template.format(
-                            time.time()-start_time,
-                            epoch,
-                            iteration,
-                            1 + iteration,
-                            args.iterations,
-                            100. * (1+iteration) / args.iterations,
-                            valid_loss_meter.avg,
-                            valid_acc_meter.avg,
-                            valid_loss_meter.averages[0],
-                            valid_loss_meter.averages[1],
-                            valid_loss_meter.averages[2],
-                            valid_loss_meter.averages[3],
-                            valid_loss_meter.averages[4],
-                            valid_acc_meter.averages[0],
-                            valid_acc_meter.averages[1],
-                            valid_acc_meter.averages[2],
-                            valid_acc_meter.averages[3],
-                            valid_acc_meter.averages[4],
-                            "BEST" if new_best else ""
-                        ))
 
-                        # for i in range(5):
-                        #     writers[i].add_scalar('accuracy', valid_acc_meter.averages[i], global_step=iteration)
-                        #     writers[i].add_scalar('loss', valid_loss_meter.averages[i], global_step=iteration)
-
-                    else:
+                    if not args.rl:
                         print(
                             "{}/{} Iterations: val loss: {}, val accuracy: {}".format(
                                 iteration,
                                 args.iterations,
                                 valid_loss_meter.avg,
-                                valid_acc_meter.avg,
-                            )
+                                valid_acc_meter.avg)
+                        )
+                    else:
+                        print(
+                            "{}/{} Iterations: val loss: {}, val hinge loss: {}, val rl loss: {}, val entropy: {}, val accuracy: {}".format(
+                                iteration,
+                                args.iterations,
+                                valid_loss_meter.avg,
+                                hinge_loss_meter.avg,
+                                rl_loss_meter.avg,
+                                entropy_meter.avg,
+                                valid_acc_meter.avg)
                         )
 
+                iterations.append(iteration)
+                losses.append(valid_loss_meter.avg)
+                if args.rl:
+                    hinge_losses.append(hinge_loss_meter.avg)
+                    rl_losses.append(rl_loss_meter.avg)
+                    entropies.append(entropy_meter.avg)
+                accuracies.append(valid_acc_meter.avg)
+
             iteration += 1
+            if iteration >= args.iterations:
+                break
 
         epoch += 1
 
         if converged:
             break
+
+    # prepare writing of data
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    dir_path = dir_path.replace("/baseline", "")
+    timestamp = str(datetime.datetime.now())
+    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_entropy_coefficient_{}_myopic_{}_mc_{}_seed_{}_{}.csv".format(
+        args.vqvae,
+        args.rl,
+        args.discrete_communication,
+        args.gumbel_softmax,
+        args.discrete_latent_number,
+        args.discrete_latent_dimension,
+        args.beta,
+        args.entropy_coefficient,
+        args.myopic,
+        args.myopic_coefficient,
+        args.seed,
+        timestamp)
+    full_filename = os.path.join(dir_path, filename)
+
+    # write data
+    d = [iterations, losses, hinge_losses, rl_losses, entropies, accuracies]
+    export_data = zip_longest(*d, fillvalue = '')
+    with open(full_filename, 'w', encoding="ISO-8859-1", newline='') as myfile:
+          wr = csv.writer(myfile)
+          wr.writerow(("iteration", "loss", "hinge loss", "rl loss", "entropy", "accuracy"))
+          wr.writerows(export_data)
+    myfile.close()
+
+    # plotting
+    print(filename)
+    plot_data(filename, args)
 
     return run_folder
 

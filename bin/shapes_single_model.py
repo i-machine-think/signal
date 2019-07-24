@@ -3,12 +3,12 @@ import torch.nn as nn
 from torch.distributions.categorical import Categorical
 
 from .shapes_meta_visual_module import ShapesMetaVisualModule
-from .shapes_sender import ShapesSender
+from .sender import Sender
 
 from helpers.utils_helper import UtilsHelper
 
 
-class ShapesSingleModel(ShapesSender):
+class ShapesSingleModel(Sender):
     def __init__(
         self,
         *args,

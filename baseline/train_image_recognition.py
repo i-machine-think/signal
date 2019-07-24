@@ -72,7 +72,7 @@ def parse_arguments(args):
     parser.add_argument(
         "--seed", type=int, default=13, metavar="S", help="random seed (default: 13)"
     )
-    
+
     parser.add_argument(
         "--messages-seed",
         type=int,
@@ -142,7 +142,7 @@ def parse_arguments(args):
     #     required=True,
     #     metavar="S",
     #     help="Sender to be loaded",
-    # )              
+    # )
     # parser.add_argument(
     #     "--visual-module-path",
     #     type=str,
@@ -161,27 +161,6 @@ def parse_arguments(args):
         help="Amount of epochs to check for not improved validation score before early stopping",
     )
     parser.add_argument(
-        "--inference",
-        action="store_true",
-        help="If sender model trained using inference step is used"
-    )
-    parser.add_argument(
-        "--step3",
-        help="If sender model trained using step3 is used",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task",
-        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task-lambda",
-        type=float,
-        default=0.5,
-        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
-    )
-    parser.add_argument(
         "--test-mode",
         help="Only run the saved model on the test set",
         action="store_true"
@@ -193,9 +172,9 @@ def parse_arguments(args):
 
 def save_image_grid(images, image_size, rows, iteration, appendix, images_path):
     sample_images = images.view(-1, 3, image_size, image_size)
-    
+
     samples_grid = make_grid(sample_images, nrow=rows, normalize=True, pad_value=.5, padding=1).cpu().numpy().transpose(1,2,0)
-    
+
     filepath = os.path.join(images_path, f'{appendix}_{iteration}.png')
     plt.imsave(filepath, samples_grid)
 
@@ -217,7 +196,7 @@ def perform_iteration(
         optimizer.zero_grad()
 
     output = model.forward(messages)
-    
+
     original_targets_vector = original_targets.view(original_targets.shape[0], -1)
     loss = criterion.forward(output, original_targets_vector)
 
@@ -248,37 +227,13 @@ def evaluate(model, criterion, dataloader, iteration, device, images_path):
 
     return loss_meter, acc_meter
 
-def generate_unique_name(length, vocabulary_size, seed, inference, step3, multi_task, multi_task_lambda):
+def generate_unique_name(length, vocabulary_size, seed, inference, multi_task, multi_task_lambda):
     result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
-    if inference:
-        result += '_inference'
-    
-    if step3:
-        result += '_step3'
-
-    if multi_task:
-        result += '_multi'
-        if multi_task_lambda:
-            result += f'_lambda_{multi_task_lambda}'
-
     return result
 
 
-def generate_model_name(length, vocabulary_size, messages_seed, training_seed, inference, step3, multi_task, multi_task_lambda):
+def generate_model_name(length, vocabulary_size, messages_seed, training_seed):
     result = f'max_len_{length}_vocab_{vocabulary_size}_msg_seed_{messages_seed}_train_seed_{training_seed}'
-    if inference:
-        result += '_inference'
-    
-    if step3:
-        result += '_step3'
-
-    if multi_task:
-        result += '_multi'
-        if multi_task_lambda:
-            result += f'_lambda_{multi_task_lambda}'
-
-    # result += '.p'
-
     return result
 
 def save_model(path, model, optimizer, iteration=None):
@@ -293,7 +248,7 @@ def save_model(path, model, optimizer, iteration=None):
 def load_model(path, model, optimizer):
     if not os.path.exists(path):
         return 0
-    
+
     print('Loading model from checkpoint...')
 
     checkpoint = torch.load(path)
@@ -319,49 +274,19 @@ def baseline(args):
     train_helper = TrainHelper(device)
     train_helper.seed_torch(seed=args.seed)
 
-    # sender = torch.load(args.sender_path, map_location=device)
-    # sender.to(device)
-    # sender.greedy = True
-    # for param in sender.parameters():
-    #     param.requires_grad = False
-    
-    # visual_module = torch.load(
-    #     args.visual_module_path,
-    #     map_location=lambda storage, location: storage)
-    # visual_module.to(device)
-    
-    # for param in visual_module.parameters():
-    #     param.requires_grad = False
-
     model = ImageReceiver()
     model.to(device)
-
-    # train_data, valid_data, _, _, _ = get_training_data(
-    #     device=device,
-    #     batch_size=args.batch_size,
-    #     k=args.k,
-    #     debugging=args.debugging,
-    #     dataset_type=args.dataset_type,
-    #     step3=False)
 
     unique_name = generate_unique_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
-        seed=args.messages_seed,
-        inference=args.inference,
-        step3=args.step3,
-        multi_task=args.multi_task,
-        multi_task_lambda=args.multi_task_lambda)
-        
+        seed=args.messages_seed)
+
     model_name = generate_model_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
         messages_seed=args.messages_seed,
-        training_seed=args.seed,
-        inference=args.inference,
-        step3=args.step3,
-        multi_task=args.multi_task,
-        multi_task_lambda=args.multi_task_lambda)
+        training_seed=args.seed)
 
     if not os.path.exists('results'):
         os.mkdir('results')
@@ -471,9 +396,9 @@ def baseline(args):
                     "BEST" if new_best else ""))
 
             iteration += 1
-        
+
         epoch += 1
-        
+
         if converged:
             break
 

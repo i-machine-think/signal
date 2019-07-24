@@ -38,7 +38,7 @@ def parse_arguments(args):
         "--device",
         type=str,
         help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
-        
+
     parser.add_argument(
         "--max-length",
         type=int,
@@ -85,82 +85,49 @@ def parse_arguments(args):
         metavar="S",
         help="type of input used by dataset pick from raw/features/meta (default features)",
     )
-    parser.add_argument(
-        "--inference",
-        action="store_true",
-        help="If sender model trained using inference step is used"
-    )
-    parser.add_argument(
-        "--step3",
-        help="If sender model trained using step3 is used",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task",
-        help="Run multi-task approach training using both baseline and diagnostic classifiers approaches",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--multi-task-lambda",
-        type=float,
-        default=0.5,
-        help="Lambda value to be used to distinguish importance between baseline approach and the diagnostic classifiers approach",
-    )
 
     args = parser.parse_args(args)
     return args
 
-def generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda):
+def generate_unique_filename(max_length, vocab_size, seed, set_type):
     name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}'
-    if inference:
-        name += '_inference'
-    
-    if step3:
-        name += '_step3'
-    
-    if multi_task:
-        name += '_multi'
-        if multi_task_lambda:
-            name += f'_lambda_{multi_task_lambda}'
-
     name += f'.{set_type}'
-
     return name
 
-def generate_messages_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda):
+def generate_messages_filename(max_length, vocab_size, seed, set_type):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda)}.messages.npy'
+    name = f'{generate_unique_filename(max_length, vocab_size, seed, set_type)}.messages.npy'
     return name
 
-def generate_indices_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda):
+def generate_indices_filename(max_length, vocab_size, seed, set_type):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, inference, step3, set_type, multi_task, multi_task_lambda)}.indices.npy'
+    name = f'{generate_unique_filename(max_length, vocab_size, seed, set_type)}.indices.npy'
     return name
 
 def sample_messages_from_dataset(model, args, dataset, dataset_type):
     messages = []
     indices = []
-    
+
     for i, batch in enumerate(dataset):
         print(f'{dataset_type}: {i}/{len(dataset)}       \r', end='')
         target, distractors, current_indices, _ = batch
-        
+
         current_target_indices = current_indices[:, 0].detach().cpu().tolist()
         indices.extend(current_target_indices)
         current_messages = model(target, distractors)
         messages.extend(current_messages.cpu().tolist())
 
-    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type, args.multi_task, args.multi_task_lambda)
+    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, dataset_type)
     messages_filepath = os.path.join(args.output_path,  messages_filename)
     np.save(messages_filepath, np.array(messages))
 
     # Added lines to save properties as np.save as well
     # Separate file is made, similar to generate_messages_filename
-    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, args.inference, args.step3, dataset_type, args.multi_task, args.multi_task_lambda)
+    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, dataset_type)
     indices_filepath = os.path.join(args.output_path, indices_filename)
     np.save(indices_filepath, np.array(indices))
 
@@ -180,23 +147,18 @@ def baseline(args):
 
     checkpoint = torch.load(args.model_path)
 
-    args.inference_step = None
     args.sender_path = None
     args.receiver_path = None
     # get sender and receiver models and save them
     sender, _, _ = get_sender_receiver(device, args)
     sender.load_state_dict(checkpoint['sender'])
     sender.greedy = True
-    
+
     model = get_trainer(
         sender,
         device,
-        inference_step=False,
-        multi_task=args.multi_task,
-        multi_task_lambda=args.multi_task_lambda,
-        dataset_type="raw",
-        step3=False)
-    
+        dataset_type="raw")
+
     model.visual_module.load_state_dict(checkpoint['visual_module'])
 
     train_data, validation_data, test_data = get_shapes_dataloader(

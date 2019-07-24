@@ -109,3 +109,14 @@ venv.bak/
 
 # runs
 /runs
+
+# environment on Lisa
+/vqvae
+
+# data for plotting
+/output_data
+/plots
+
+#
+/baseline/data/checkpoints/*raw*
+/baseline/data/checkpoints/raw*

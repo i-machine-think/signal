@@ -7,24 +7,23 @@ from .dataloader_helper import get_shapes_features, get_shapes_dataloader
 
 from enums.dataset_type import DatasetType
 
-from models.shapes_receiver import ShapesReceiver
-from models.shapes_sender import ShapesSender
-from models.shapes_trainer import ShapesTrainer
-from models.shapes_single_model import ShapesSingleModel
-from models.shapes_meta_visual_module import ShapesMetaVisualModule
-from models.messages_receiver import MessagesReceiver
+from models.receiver import Receiver
+from models.sender import Sender
+from models.full_model import FullModel
 
 
-def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, MessagesReceiver):
+def get_sender_receiver(device, args) -> (Sender, Receiver):
     # Load Vocab
     vocab = AgentVocab(args.vocab_size)
 
-    baseline_receiver = None
+    receiver = None
     diagnostic_receiver = None
 
     cell_type = "lstm"
     genotype = {}
     if args.single_model:
+        pass
+        """
         sender = ShapesSingleModel(
             args.vocab_size,
             args.max_length,
@@ -37,7 +36,8 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             dataset_type=args.dataset_type,
         )
 
-        baseline_receiver = ShapesSingleModel(
+
+        receiver = ShapesSingleModel(
             args.vocab_size,
             args.max_length,
             vocab.bound_idx,
@@ -48,8 +48,9 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             genotype=genotype,
             dataset_type=args.dataset_type,
         )
+        """
     else:
-        sender = ShapesSender(
+        sender = Sender(
             args.vocab_size,
             args.max_length,
             vocab.bound_idx,
@@ -60,81 +61,57 @@ def get_sender_receiver(device, args) -> (ShapesSender, ShapesReceiver, Messages
             cell_type=cell_type,
             genotype=genotype,
             dataset_type=args.dataset_type,
-            inference_step=args.inference_step
+            tau=args.tau,
+            vqvae=args.vqvae,
+            beta=args.beta,
+            discrete_latent_number=args.discrete_latent_number,
+            discrete_latent_dimension=args.discrete_latent_dimension,
+            discrete_communication=args.discrete_communication,
+            gumbel_softmax=args.gumbel_softmax,
+            rl=args.rl
         )
 
-        if not args.inference_step or args.multi_task:
-            baseline_receiver = ShapesReceiver(
-                args.vocab_size,
-                device,
-                embedding_size=args.embedding_size,
-                hidden_size=args.hidden_size,
-                cell_type=cell_type,
-                genotype=genotype,
-                dataset_type=args.dataset_type,
-            )
-
-    if args.inference_step or args.multi_task:
-        diagnostic_receiver = MessagesReceiver(
-            num_classes_by_model= [3, 3, 2, 3, 3],
-            device=device)
+        receiver = Receiver(
+            args.vocab_size,
+            device,
+            embedding_size=args.embedding_size,
+            hidden_size=args.hidden_size,
+            cell_type=cell_type,
+            genotype=genotype,
+            dataset_type=args.dataset_type
+        )
 
     if args.sender_path:
         sender = torch.load(args.sender_path)
     if args.receiver_path:
-        baseline_receiver = torch.load(args.receiver_path)
+        receiver = torch.load(args.receiver_path)
 
-
-    # This is only used when not training using raw data
-    # if args.freeze_sender:
-    #     for param in sender.parameters():
-    #         param.requires_grad = False
-    # else:
-    #     s_visual_module = ShapesMetaVisualModule(
-    #         hidden_size=sender.hidden_size, dataset_type=args.dataset_type
-    #     )
-    #     sender.input_module = s_visual_module
-
-    # if args.freeze_receiver:
-    #     for param in receiver.parameters():
-    #         param.requires_grad = False
-    # else:
-    #     r_visual_module = ShapesMetaVisualModule(
-    #         hidden_size=receiver.hidden_size,
-    #         dataset_type=args.dataset_type,
-    #         sender=False,
-    #     )
-
-    #     if args.single_model:
-    #         receiver.output_module = r_visual_module
-    #     else:
-    #         receiver.input_module = r_visual_module
-
-    return sender, baseline_receiver, diagnostic_receiver
+    return sender, receiver, None
 
 
 def get_trainer(
     sender,
     device,
-    inference_step,
-    multi_task,
-    multi_task_lambda,
     dataset_type,
-    step3,
-    baseline_receiver = None,
-    diagnostic_receiver = None):
+    receiver = None,
+    diagnostic_receiver = None,
+    vqvae=False,
+    rl=False,
+    entropy_coefficient=1.0,
+    myopic=False,
+    myopic_coefficient=0.1):
     extract_features = dataset_type == "raw"
 
-    return ShapesTrainer(
+    return FullModel(
         sender,
         device,
-        inference_step,
-        multi_task,
-        multi_task_lambda,
-        step3,
-        baseline_receiver=baseline_receiver,
+        receiver=receiver,
         diagnostic_receiver=diagnostic_receiver,
-        extract_features=extract_features)
+        extract_features=extract_features,
+        vqvae=vqvae,
+        rl=rl,
+        myopic=myopic,
+        myopic_coefficient=myopic_coefficient)
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)
@@ -143,15 +120,14 @@ def get_meta_data():
     return train_meta_data, valid_meta_data, test_meta_data
 
 
-def get_training_data(device, batch_size, k, debugging, dataset_type, step3):
+def get_training_data(device, batch_size, k, debugging, dataset_type):
     # Load data
     train_data, valid_data, test_data = get_shapes_dataloader(
         device=device,
         batch_size=batch_size,
         k=k,
         debug=debugging,
-        dataset_type=dataset_type,
-        step3=step3)
+        dataset_type=dataset_type)
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
     valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)

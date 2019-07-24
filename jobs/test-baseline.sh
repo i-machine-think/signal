@@ -3,15 +3,76 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=3
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=24:00:00
+#SBATCH --time=1:00:00
 #SBATCH --mem=60000M
 #SBATCH --partition=gpu_shared_course
 #SBATCH --gres=gpu:1
-module purge
-module load eb
-module load Python/3.6.3-foss-2017b
-module load cuDNN/7.0.5-CUDA-9.0.176
-module load NCCL/2.0.5-CUDA-9.0.176
-export LD_LIBRARY_PATH=/hpc/eb/Debian9/cuDNN/7.1-CUDA-8.0.44-GCCcore-5.4.0/lib64:$LD_LIBRARY_PATH
+#SBATCH --mail-type=BEGIN,END
+#SBATCH --mail-user=leon.lang@student.uva.nl
 
-srun python3 -u train_game.py --device cuda --seed 114 --iterations 30000 >> 'output/baseline-114.out'
+
+# Test RL, myopic, with vqvae
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10 \
+	--vqvae \
+	--rl \
+	--myopic \
+	--myopic_coefficient 0.1
+# without vqvae
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10 \
+	--rl \
+	--myopic \
+	--myopic_coefficient 0.1
+
+
+# RL, not myopic, both settings from before:
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10 \
+	--vqvae \
+	--rl
+
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10 \
+	--rl
+
+# Now: No RL anymore
+# ultimate baseline:
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10
+
+# from now on: no rl, but vqvae
+# continuous communication:
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10 \
+	--vqvae
+
+# discrete communication, but no gumbel softmax:
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10
+	--vqvae \
+	--discrete_communication
+
+# discrete communication, and gumbel softmax:
+python3 -u baseline/train_game.py \
+	--seed 1 \
+	--iterations 1000 \
+	--log-interval 10
+	--vqvae \
+	--discrete_communication \
+	--gumbel_softmax
+
