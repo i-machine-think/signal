@@ -30,7 +30,7 @@ python3 -u baseline/train_game.py \
 python3 -u baseline/train_game.py \
 	--seed 1 \
 	--iterations 500 \
-	--log-interval 20
+	--log-interval 20 \
 	--vqvae \
 	--discrete_communication
 
@@ -38,7 +38,7 @@ python3 -u baseline/train_game.py \
 python3 -u baseline/train_game.py \
 	--seed 1 \
 	--iterations 500 \
-	--log-interval 20
+	--log-interval 20 \
 	--vqvae \
 	--discrete_communication \
 	--gumbel_softmax
