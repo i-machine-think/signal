@@ -2,16 +2,14 @@ import torch
 import torch.nn as nn
 
 class Receiver(nn.Module):
-    def __init__(
-        self,
-        vocab_size,
-        device,
-        embedding_size=256,
-        hidden_size=512,
-        cell_type="lstm",
-        genotype=None,
-        dataset_type="meta"
-        ):
+    def __init__(self,
+                 vocab_size,
+                 device,
+                 embedding_size=256,
+                 hidden_size=512,
+                 cell_type="lstm",
+                 genotype=None,
+                 dataset_type="meta"):
         super().__init__()
 
         self.embedding_size = embedding_size
@@ -59,7 +57,7 @@ class Receiver(nn.Module):
             h = (h, c)
 
         # make sequence_length be first dim
-        seq_iterator = emb.transpose(0, 1) # size: seq_length x output_length x embedding_size
+        seq_iterator = emb.transpose(0, 1)  # size: seq_length x batch_size x embedding_size
         for w in seq_iterator:
             h = self.rnn(w, h)
 
