@@ -1,4 +1,3 @@
-# diagnostics-shapes
-This is a repository containing the project 'Diagnostics Shapes' for the Project AI course.
+# signal
 
-This fork is about work on extending the sender-receiver architecture by using an idea from VQ-VAE.
+Version alpha for the project signal
