@@ -15,6 +15,7 @@ python3 -u baseline/train_game.py \
 	--iterations 6 \
 	--log-interval 2 \
 	--vocab-size 25 \
+	--vqvae \
 	--rl \
 	--myopic \
 	--myopic_coefficient 0.1

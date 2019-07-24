@@ -137,7 +137,7 @@ class FullModel(nn.Module):
         hinge_mean_loss = torch.mean(hinge_loss) # without item, since it will be backpropagated
 
         if self.vqvae:
-            # In the vqvae case, we add loss_2_3
+            # In the vqvae case, we add loss_2_3, irrespective of whether we are in rl setting or not.
             hinge_mean_loss += loss_2_3
 
         if self.rl:
