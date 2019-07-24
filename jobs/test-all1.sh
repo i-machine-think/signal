@@ -10,14 +10,13 @@
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=leon.lang@student.uva.nl
 
-source vqvae/bin/activate
 
 ### RL ###
 # Test RL, myopic, with vqvae
 python3 -u baseline/train_game.py \
 	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
+	--iterations 500 \
+	--log-interval 20 \
 	--vqvae \
 	--rl \
 	--myopic \
@@ -25,8 +24,8 @@ python3 -u baseline/train_game.py \
 # without vqvae
 python3 -u baseline/train_game.py \
 	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
+	--iterations 500 \
+	--log-interval 20 \
 	--rl \
 	--myopic \
 	--myopic_coefficient 0.1
@@ -35,14 +34,14 @@ python3 -u baseline/train_game.py \
 # RL, not myopic, both settings from before:
 python3 -u baseline/train_game.py \
 	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
+	--iterations 500 \
+	--log-interval 20 \
 	--vqvae \
 	--rl
 
 python3 -u baseline/train_game.py \
 	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
+	--iterations 500 \
+	--log-interval 20 \
 	--rl
 
