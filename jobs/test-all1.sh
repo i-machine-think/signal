@@ -10,7 +10,9 @@
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=leon.lang@student.uva.nl
 
+source vqvae/bin/activate
 
+### RL ###
 # Test RL, myopic, with vqvae
 python3 -u baseline/train_game.py \
 	--seed 1 \
@@ -43,36 +45,4 @@ python3 -u baseline/train_game.py \
 	--iterations 1000 \
 	--log-interval 10 \
 	--rl
-
-# Now: No RL anymore
-# ultimate baseline:
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10
-
-# from now on: no rl, but vqvae
-# continuous communication:
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
-	--vqvae
-
-# discrete communication, but no gumbel softmax:
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10
-	--vqvae \
-	--discrete_communication
-
-# discrete communication, and gumbel softmax:
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10
-	--vqvae \
-	--discrete_communication \
-	--gumbel_softmax
 

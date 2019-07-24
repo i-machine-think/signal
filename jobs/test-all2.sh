@@ -11,40 +11,10 @@
 #SBATCH --mail-user=leon.lang@student.uva.nl
 
 
-# Test RL, myopic, with vqvae
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
-	--vqvae \
-	--rl \
-	--myopic \
-	--myopic_coefficient 0.1
-# without vqvae
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
-	--rl \
-	--myopic \
-	--myopic_coefficient 0.1
+source vqvae/bin/activate
 
 
-# RL, not myopic, both settings from before:
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
-	--vqvae \
-	--rl
-
-python3 -u baseline/train_game.py \
-	--seed 1 \
-	--iterations 1000 \
-	--log-interval 10 \
-	--rl
-
-# Now: No RL anymore
+### Now: No RL anymore ###
 # ultimate baseline:
 python3 -u baseline/train_game.py \
 	--seed 1 \
