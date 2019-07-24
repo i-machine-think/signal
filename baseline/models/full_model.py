@@ -87,9 +87,8 @@ class FullModel(nn.Module):
         messages, lengths, entropy, _, _, loss_2_3, message_logits = self.sender.forward(
             hidden_state=target) # The first hidden state is the target, as in Referential Games paper.
 
-        if not self.vqvae and not self.rl:
+        if not (self.vqvae and not self.sender.discrete_communication and not self.rl):
             messages = self._pad(messages, lengths) # If I understand correctly: After eos happens the first time, all later words in message are eos as well.
-
         if not self.diagnostic_receiver and not self.receiver:
             return messages
 
@@ -141,10 +140,16 @@ class FullModel(nn.Module):
             hinge_mean_loss += loss_2_3
 
         if self.rl:
-            logit = torch.sum(message_logits, dim=1)
-            entropy_mean = torch.mean(torch.sum(entropy, dim=1) / self.output_len)
+            effective_entropy=torch.zeros(batch_size)
+            effective_logit=torch.zeros(batch_size)
+            for i in range(self.output_len):
+                not_eosed = (i < lengths).float()
+                effective_entropy += entropy[:, i] * not_eosed
+                effective_logit += message_logits[:, i] * not_eosed
+
+            entropy_mean = torch.mean(effective_entropy / lengths.float())
             self.update_baseline(hinge_mean_loss)
-            rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * logit)
+            rl_mean_loss = torch.mean((hinge_loss.detach() - self.hinge_loss_baseline) * effective_logit)
             final_loss = hinge_mean_loss + rl_mean_loss - self.entropy_coefficient*entropy_mean
             return final_loss, (final_loss.item(), hinge_mean_loss.item(), rl_mean_loss.item(), entropy_mean.item()), accuracy_mean, messages
 

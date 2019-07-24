@@ -34,13 +34,12 @@ class Sender(nn.Module):
                  gumbel_softmax=False,
                  rl=False):
         super().__init__()
-        if vqvae:
-            if discrete_communication:
-                assert vocab_size == discrete_latent_number, "When using discrete communication, " \
+        if vqvae and not rl and not discrete_communication:
+            assert vocab_size == discrete_latent_dimension, "When using continuous communication, " \
+                                                            "vocab_size = discrete_latent_dimension"
+        else:
+            assert vocab_size == discrete_latent_number, "When using discrete communication, " \
                                                              "vocab_size = discrete_latent_number"
-            else:
-                assert vocab_size == discrete_latent_dimension, "When using continuous communication, " \
-                                                                "vocab_size = discrete_latent_dimension"
         self.vocab_size = vocab_size
         self.cell_type = cell_type
         self.output_len = output_len
@@ -190,11 +189,13 @@ class Sender(nn.Module):
         state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output
-        if not self.vqvae:
+        if not (self.vqvae and not self.discrete_communication and not self.rl):
             output = [ torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
             output[0][:, self.sos_id] = 1.0
         else:
-            # In vqvae case, there is no sos symbol, since all words come from the unordered embedding table. TODO: Change that?
+            # In vqvae case, there is no sos symbol, since all words come from the unordered embedding table.
+            # It is not possible to index code words by sos or eos symbols, since the number of codewords
+            # is not necessarily the vocab size!
             output = [torch.zeros((batch_size, self.vocab_size), dtype=torch.float32, device=self.device)]
 
         # Keep track of sequence lengths
@@ -232,7 +233,6 @@ class Sender(nn.Module):
                     # That's the original baseline setting
                     p = F.softmax(self.linear_out(h), dim=1)
                     token, sentence_probability = self.calculate_token_gumbel_softmax(p, self.tau, sentence_probability, batch_size)
-                    self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
                 else:
                     pre_quant = self.linear_out(h)
 
@@ -266,6 +266,10 @@ class Sender(nn.Module):
                     token_index = all_logits.argmax(dim=1)
                     token = to_one_hot(token_index, n_dims=self.vocab_size)
                 message_logits[:,i] = distr.log_prob(token_index)
+
+            if not (self.vqvae and not self.discrete_communication and not self.rl):
+                # Whenever we have a meaningful eos symbol, we prune the messages in the end
+                self._calculate_seq_len(seq_lengths, token, initial_length, seq_pos=i + 1)
 
             if self.vqvae:
                 loss_2 = torch.mean(torch.norm(pre_quant.detach() - self.e[indices], dim=1)**2)
