@@ -117,6 +117,9 @@ venv.bak/
 /output_data
 /plots
 
+# VSCode
+/.vscode
+
 #
 /baseline/data/checkpoints/*raw*
 /baseline/data/checkpoints/raw*
