@@ -1,5 +1,4 @@
 import pickle
-import os
 import numpy as np
 
 from enums.dataset_type import DatasetType

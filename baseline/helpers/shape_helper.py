@@ -1,9 +1,7 @@
-import os
 import pickle
 import numpy as np
 from random import shuffle
 
-import torch
 
 from .image_helper import get_image
 from .file_helper import FileHelper

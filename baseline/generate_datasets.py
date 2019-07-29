@@ -2,9 +2,7 @@ import numpy as np
 import cairo
 from data.image import Image
 from enums.image_property import ImageProperty
-from string import ascii_lowercase
 
-import os
 import pickle
 
 N_CELLS = 3

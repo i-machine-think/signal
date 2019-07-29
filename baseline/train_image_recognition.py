@@ -1,7 +1,6 @@
 # Baseline setting in which there are only two agents
 # - no evolution
 
-import pickle
 import argparse
 import sys
 import torch
@@ -20,8 +19,6 @@ from helpers.game_helper import (
     get_meta_data,
 )
 from helpers.train_helper import TrainHelper
-from helpers.file_helper import FileHelper
-from helpers.metrics_helper import MetricsHelper
 
 from models.image_receiver import ImageReceiver
 from metrics.average_meter import AverageMeter

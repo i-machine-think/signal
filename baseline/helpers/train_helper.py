@@ -3,7 +3,6 @@ import numpy as np
 import torch
 
 from metrics.average_meter import AverageMeter
-from metrics.average_ensemble_meter import AverageEnsembleMeter
 
 from models.full_model import FullModel
 

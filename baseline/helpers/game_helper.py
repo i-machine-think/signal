@@ -22,7 +22,6 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
     cell_type = "lstm"
     genotype = {}
     if args.single_model:
-        pass
         """
         sender = ShapesSingleModel(
             args.vocab_size,

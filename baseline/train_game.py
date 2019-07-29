@@ -25,7 +25,6 @@ from helpers.metrics_helper import MetricsHelper
 
 from plotting import plot_data
 
-from tensorboardX import SummaryWriter
 
 
 def parse_arguments(args):

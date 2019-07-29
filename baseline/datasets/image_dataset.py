@@ -1,4 +1,3 @@
-from PIL import Image
 import torchvision.transforms
 import torch.utils.data as data
 

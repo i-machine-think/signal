@@ -1,4 +1,3 @@
-import random
 
 import torch
 import torch.nn as nn
@@ -8,7 +7,6 @@ from .cnn import CNN
 from .receiver import Receiver
 from .sender import Sender
 
-import numpy as np
 
 
 class FullModel(nn.Module):

@@ -3,7 +3,6 @@ import torch.nn as nn
 from torch.distributions.categorical import Categorical
 from torch.nn import functional as F
 
-import numpy as np
 
 from .vector_quantization import (
     to_one_hot,

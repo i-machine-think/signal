@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
 from torch.autograd import Variable
 
 # this utils function is taken from https://discuss.pytorch.org/t/convert-int-into-one-hot-format/507/23

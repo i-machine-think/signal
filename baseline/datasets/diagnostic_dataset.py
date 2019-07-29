@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 
-import torchvision.transforms
 import torch.utils.data as data
 
 from enums.dataset_type import DatasetType

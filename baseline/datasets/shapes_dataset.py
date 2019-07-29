@@ -1,9 +1,5 @@
 import numpy as np
-import torch
-import random
-from torch.utils.data.sampler import Sampler
 import torchvision.transforms
-from PIL import Image
 
 
 class ShapesDataset:

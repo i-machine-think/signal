@@ -1,4 +1,3 @@
-import pickle
 import argparse
 import sys
 import torch
@@ -9,7 +8,6 @@ import numpy as np
 from helpers.game_helper import get_sender_receiver, get_trainer
 from helpers.dataloader_helper import get_shapes_dataloader
 from helpers.train_helper import TrainHelper
-from helpers.metrics_helper import MetricsHelper
 
 
 def parse_arguments(args):
