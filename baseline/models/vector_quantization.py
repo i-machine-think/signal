@@ -13,11 +13,13 @@ def to_one_hot(y, n_dims=None):
     y_one_hot = y_one_hot.view(*y.shape, -1)
     return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
 
+
 class HardMax(torch.autograd.Function):
     """
     Takes a softmax vector and returns the hard max.
     With straight-through gradient.
     """
+
     @staticmethod
     def forward(ctx, softmax, max_indices, n_dims):
 
@@ -31,7 +33,6 @@ class HardMax(torch.autograd.Function):
         return grad_hard_max, None, None
 
 
-
 class VectorQuantization(torch.autograd.Function):
     """
     A function that compares the input of the forward pass to the embedding table.
@@ -40,12 +41,15 @@ class VectorQuantization(torch.autograd.Function):
     Inspired by VQ-VAE (van den Oord et al., 2018).
     Implementation adapted from https://github.com/ritheshkumar95/pytorch-vqvae/blob/master/functions.py.
     """
+
     @staticmethod
     def forward(ctx, pre_quant, e, indices):
         distance_computer = EmbeddingtableDistances(e)
 
         distances = distance_computer.forward(pre_quant)
-        _, indices[:] = torch.min(distances, dim=1) # indices lists, for each vector in the batch pre_quant, the index of the closest codeword
+        _, indices[:] = torch.min(
+            distances, dim=1
+        )  # indices lists, for each vector in the batch pre_quant, the index of the closest codeword
 
         return e[indices]
 
@@ -54,11 +58,10 @@ class VectorQuantization(torch.autograd.Function):
         return grad_e, None, None
 
 
-
 class EmbeddingtableDistances(nn.Module):
     def __init__(self, e):
         super().__init__()
-        self.register_buffer('e', e) # The embedding table from VQ-VAE
+        self.register_buffer("e", e)  # The embedding table from VQ-VAE
 
     def forward(self, pre_quant):
         # Use ||a - b||^2 = ||a||^2 + ||b||^2 - 2ab for computation of distances.
@@ -67,6 +70,7 @@ class EmbeddingtableDistances(nn.Module):
         pre_quant_sq = torch.sum(pre_quant ** 2, dim=1, keepdim=True)
 
         # Compute the distances to the codebook e
-        distances = torch.addmm(e_sq + pre_quant_sq,
-            pre_quant, self.e.t(), alpha=-2.0, beta=1.0)
+        distances = torch.addmm(
+            e_sq + pre_quant_sq, pre_quant, self.e.t(), alpha=-2.0, beta=1.0
+        )
         return distances

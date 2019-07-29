@@ -18,9 +18,7 @@ def one_hot(a):
 
 def get_metadata_properties(dataset: DatasetType = DatasetType.Test):
 
-    metadata = pickle.load(
-        open(file_helper.get_metadata_path(dataset), "rb")
-    )
+    metadata = pickle.load(open(file_helper.get_metadata_path(dataset), "rb"))
 
     metadata_properties = np.zeros((len(metadata), 5))
     for i, m in enumerate(metadata):
@@ -29,8 +27,7 @@ def get_metadata_properties(dataset: DatasetType = DatasetType.Test):
         color = m["colors"][pos_h][pos_w]
         shape = m["shapes"][pos_h][pos_w]
         size = m["sizes"][pos_h][pos_w]
-        metadata_properties[i] = np.array(
-            [color, shape, size, pos_h, pos_w])
+        metadata_properties[i] = np.array([color, shape, size, pos_h, pos_w])
     metadata_properties = metadata_properties.astype(np.int)
 
     return metadata_properties

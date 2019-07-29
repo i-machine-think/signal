@@ -61,6 +61,7 @@ def draw(shape, color, size, left, top, ctx):
     ctx.set_source_rgb(*rgb)
     ctx.fill()
 
+
 def get_image(seed, shape=-1, color=-1, n=1, nOtherShapes=0, shouldOthersBeSame=False):
     np.random.seed(seed)
 

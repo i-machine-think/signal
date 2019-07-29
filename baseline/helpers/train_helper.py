@@ -7,17 +7,12 @@ from metrics.average_ensemble_meter import AverageEnsembleMeter
 
 from models.full_model import FullModel
 
-class TrainHelper():
+
+class TrainHelper:
     def __init__(self, device):
         self.device = device
 
-    def train_one_batch(
-        self,
-        model: FullModel,
-        batch,
-        optimizer,
-        meta_data,
-        device):
+    def train_one_batch(self, model: FullModel, batch, optimizer, meta_data, device):
         """
         Train for single batch
         """
@@ -36,12 +31,7 @@ class TrainHelper():
 
         return losses, accuracies
 
-    def evaluate(self,
-        model,
-        dataloader,
-        valid_meta_data,
-        device,
-        rl):
+    def evaluate(self, model, dataloader, valid_meta_data, device, rl):
 
         if not rl:
             loss_meter = AverageMeter()
@@ -74,15 +64,10 @@ class TrainHelper():
                 entropy_meter.update(entropy)
                 acc_meter.update(acc)
 
-
             messages.append(msg)
 
         if not rl:
-            return (
-                loss_meter,
-                acc_meter,
-                torch.cat(messages, 0)
-            )
+            return (loss_meter, acc_meter, torch.cat(messages, 0))
         else:
             return (
                 combined_loss_meter,
@@ -90,7 +75,7 @@ class TrainHelper():
                 rl_loss_meter,
                 entropy_meter,
                 acc_meter,
-                torch.cat(messages, 0)
+                torch.cat(messages, 0),
             )
 
     def get_filename_from_baseline_params(self, params):
@@ -127,5 +112,5 @@ class TrainHelper():
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-        if self.device.type == 'cuda':
+        if self.device.type == "cuda":
             torch.cuda.manual_seed(seed)

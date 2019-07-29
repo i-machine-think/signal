@@ -16,15 +16,14 @@ class MessageDataset(data.Dataset):
 
         self._file_helper = FileHelper()
         self._messages = self._get_message_data(unique_name, dataset_type)
-        
+
         indices = self._get_indices_data(unique_name, dataset_type)
-        self._raw_data = np.load(self._file_helper.get_input_path(dataset_type))[indices]
-        
+        self._raw_data = np.load(self._file_helper.get_input_path(dataset_type))[
+            indices
+        ]
+
         self.transforms = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.ToTensor()
-            ]
+            [torchvision.transforms.ToPILImage(), torchvision.transforms.ToTensor()]
         )
 
     def __getitem__(self, index):
@@ -39,13 +38,17 @@ class MessageDataset(data.Dataset):
         return len(self._messages)
 
     def _get_message_data(self, unique_name, dataset_type):
-        messages_filename = f'{unique_name}.{dataset_type}.messages.npy'
-        messages_data = np.load(os.path.join(self._file_helper.messages_folder_path, messages_filename))
+        messages_filename = f"{unique_name}.{dataset_type}.messages.npy"
+        messages_data = np.load(
+            os.path.join(self._file_helper.messages_folder_path, messages_filename)
+        )
 
         return messages_data
 
     def _get_indices_data(self, unique_name, dataset_type):
-        indices_filename = f'{unique_name}.{dataset_type}.indices.npy'
-        indices_data = np.load(os.path.join(self._file_helper.messages_folder_path, indices_filename))
+        indices_filename = f"{unique_name}.{dataset_type}.indices.npy"
+        indices_data = np.load(
+            os.path.join(self._file_helper.messages_folder_path, indices_filename)
+        )
 
         return indices_data

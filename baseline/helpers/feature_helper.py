@@ -17,11 +17,14 @@ def get_features(images, device):
     print("Extracting features")
 
     if not os.path.isfile(file_helper.model_checkpoint_path):
-        return ValueError("Feature Extractor is missing. Train baseline using 'raw' features.")
+        return ValueError(
+            "Feature Extractor is missing. Train baseline using 'raw' features."
+        )
 
     model = torch.load(
         file_helper.model_checkpoint_path,
-        map_location=lambda storage, location: storage)
+        map_location=lambda storage, location: storage,
+    )
 
     model.to(device)
 

@@ -19,7 +19,7 @@ class DiagnosticDataset(data.Dataset):
 
         self._file_helper = FileHelper()
         self._messages = self._get_message_data()
-        
+
         indices = self._get_indices_data()
         self._properties = get_metadata_properties(dataset_type)[indices]
 
@@ -32,13 +32,17 @@ class DiagnosticDataset(data.Dataset):
         return len(self._properties)
 
     def _get_message_data(self):
-        messages_filename = f'{self._unique_name}.{self._dataset_type}.messages.npy'
-        messages_data = np.load(os.path.join(self._file_helper.messages_folder_path, messages_filename))
+        messages_filename = f"{self._unique_name}.{self._dataset_type}.messages.npy"
+        messages_data = np.load(
+            os.path.join(self._file_helper.messages_folder_path, messages_filename)
+        )
 
         return messages_data
 
     def _get_indices_data(self):
-        indices_filename = f'{self._unique_name}.{self._dataset_type}.indices.npy'
-        indices_data = np.load(os.path.join(self._file_helper.messages_folder_path, indices_filename))
+        indices_filename = f"{self._unique_name}.{self._dataset_type}.indices.npy"
+        indices_data = np.load(
+            os.path.join(self._file_helper.messages_folder_path, indices_filename)
+        )
 
         return indices_data

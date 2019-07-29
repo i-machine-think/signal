@@ -88,4 +88,3 @@ def representation_similarity_analysis(
         return rsa_sr, rsa_si, rsa_ri, rsa_sm, topological_similarity, pseudo_tre
     else:
         return rsa_sr, rsa_si, rsa_ri, rsa_sm, topological_similarity
-

@@ -13,7 +13,12 @@ from torch.utils import data
 from datasets.message_dataset import MessageDataset
 from enums.dataset_type import DatasetType
 
-from helpers.game_helper import get_sender_receiver, get_trainer, get_training_data, get_meta_data
+from helpers.game_helper import (
+    get_sender_receiver,
+    get_trainer,
+    get_training_data,
+    get_meta_data,
+)
 from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
 from helpers.metrics_helper import MetricsHelper
@@ -24,9 +29,13 @@ from metrics.average_meter import AverageMeter
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 
-header = '  Time Epoch Iteration     Progress (%Epoch) |     Loss Accuracy | Best'
-log_template = ' '.join(
-    '{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>8.6f} | {:>4s}'.split(','))
+header = "  Time Epoch Iteration     Progress (%Epoch) |     Loss Accuracy | Best"
+log_template = " ".join(
+    "{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,| {:>8.6f} {:>8.6f} | {:>4s}".split(
+        ","
+    )
+)
+
 
 def parse_arguments(args):
     # Training settings
@@ -78,7 +87,7 @@ def parse_arguments(args):
         type=int,
         required=True,
         metavar="S",
-        help="The seed which was used for sampling messages"
+        help="The seed which was used for sampling messages",
     )
     parser.add_argument(
         "--embedding-size",
@@ -122,13 +131,7 @@ def parse_arguments(args):
         metavar="N",
         help="Size of vocabulary (default: 25)",
     )
-    parser.add_argument(
-        "--num-nodes",
-        type=int,
-        default=4,
-        metavar="N",
-        help="Size of darts cell to use with random-darts (default: 4)",
-    )
+
     parser.add_argument(
         "--lr",
         type=float,
@@ -153,7 +156,8 @@ def parse_arguments(args):
     parser.add_argument(
         "--device",
         type=str,
-        help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+        help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done",
+    )
     parser.add_argument(
         "--patience",
         type=int,
@@ -163,20 +167,27 @@ def parse_arguments(args):
     parser.add_argument(
         "--test-mode",
         help="Only run the saved model on the test set",
-        action="store_true"
+        action="store_true",
     )
 
     args = parser.parse_args(args)
 
     return args
 
+
 def save_image_grid(images, image_size, rows, iteration, appendix, images_path):
     sample_images = images.view(-1, 3, image_size, image_size)
 
-    samples_grid = make_grid(sample_images, nrow=rows, normalize=True, pad_value=.5, padding=1).cpu().numpy().transpose(1,2,0)
+    samples_grid = (
+        make_grid(sample_images, nrow=rows, normalize=True, pad_value=0.5, padding=1)
+        .cpu()
+        .numpy()
+        .transpose(1, 2, 0)
+    )
 
-    filepath = os.path.join(images_path, f'{appendix}_{iteration}.png')
+    filepath = os.path.join(images_path, f"{appendix}_{iteration}.png")
     plt.imsave(filepath, samples_grid)
+
 
 def perform_iteration(
     model,
@@ -187,7 +198,8 @@ def perform_iteration(
     iteration,
     device,
     images_path,
-    generate_images):
+    generate_images,
+):
 
     messages = messages.float().to(device)
     original_targets = original_targets.float().to(device)
@@ -206,13 +218,25 @@ def perform_iteration(
 
     if generate_images:
         if iteration == 0:
-            save_image_grid(original_targets_vector[0:100].detach().cpu(), 30, 10, iteration, 'original', images_path)
+            save_image_grid(
+                original_targets_vector[0:100].detach().cpu(),
+                30,
+                10,
+                iteration,
+                "original",
+                images_path,
+            )
 
-        save_image_grid(output[0:100].detach().cpu(), 30, 10, iteration, 'predicted', images_path)
+        save_image_grid(
+            output[0:100].detach().cpu(), 30, 10, iteration, "predicted", images_path
+        )
 
-    acc = torch.mean(torch.mean(((original_targets_vector > .5) == (output > .5)).float(), dim=1))
+    acc = torch.mean(
+        torch.mean(((original_targets_vector > 0.5) == (output > 0.5)).float(), dim=1)
+    )
 
     return loss.item(), acc.item()
+
 
 def evaluate(model, criterion, dataloader, iteration, device, images_path):
     loss_meter = AverageMeter()
@@ -221,45 +245,62 @@ def evaluate(model, criterion, dataloader, iteration, device, images_path):
     model.eval()
 
     for i, (messages, original_targets) in enumerate(dataloader):
-        loss, acc = perform_iteration(model, criterion, None, messages, original_targets, iteration, device, images_path, i==0)
+        loss, acc = perform_iteration(
+            model,
+            criterion,
+            None,
+            messages,
+            original_targets,
+            iteration,
+            device,
+            images_path,
+            i == 0,
+        )
         loss_meter.update(loss)
         acc_meter.update(acc)
 
     return loss_meter, acc_meter
 
-def generate_unique_name(length, vocabulary_size, seed, inference, multi_task, multi_task_lambda):
-    result = f'max_len_{length}_vocab_{vocabulary_size}_seed_{seed}'
+
+def generate_unique_name(
+    length, vocabulary_size, seed, inference, multi_task, multi_task_lambda
+):
+    result = f"max_len_{length}_vocab_{vocabulary_size}_seed_{seed}"
     return result
 
 
 def generate_model_name(length, vocabulary_size, messages_seed, training_seed):
-    result = f'max_len_{length}_vocab_{vocabulary_size}_msg_seed_{messages_seed}_train_seed_{training_seed}'
+    result = f"max_len_{length}_vocab_{vocabulary_size}_msg_seed_{messages_seed}_train_seed_{training_seed}"
     return result
 
+
 def save_model(path, model, optimizer, iteration=None):
-    torch_state = {'model_state_dict': model.state_dict(),
-                   'optimizer_state_dict': optimizer.state_dict()
-                   }
+    torch_state = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+    }
     if iteration:
         torch_state["iteration"] = iteration
 
     torch.save(torch_state, path)
 
+
 def load_model(path, model, optimizer):
     if not os.path.exists(path):
         return 0
 
-    print('Loading model from checkpoint...')
+    print("Loading model from checkpoint...")
 
     checkpoint = torch.load(path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
     iteration = 0
-    if checkpoint['iteration']:
-        iteration = checkpoint['iteration']
+    if checkpoint["iteration"]:
+        iteration = checkpoint["iteration"]
 
     return iteration
+
 
 def baseline(args):
 
@@ -278,20 +319,20 @@ def baseline(args):
     model.to(device)
 
     unique_name = generate_unique_name(
-        length=args.max_length,
-        vocabulary_size=args.vocab_size,
-        seed=args.messages_seed)
+        length=args.max_length, vocabulary_size=args.vocab_size, seed=args.messages_seed
+    )
 
     model_name = generate_model_name(
         length=args.max_length,
         vocabulary_size=args.vocab_size,
         messages_seed=args.messages_seed,
-        training_seed=args.seed)
+        training_seed=args.seed,
+    )
 
-    if not os.path.exists('results'):
-        os.mkdir('results')
+    if not os.path.exists("results"):
+        os.mkdir("results")
 
-    reproducing_folder = os.path.join('results', 'reproducing-images')
+    reproducing_folder = os.path.join("results", "reproducing-images")
     if not os.path.exists(reproducing_folder):
         os.mkdir(reproducing_folder)
 
@@ -299,18 +340,36 @@ def baseline(args):
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    model_path = os.path.join(output_path, 'messages_receiver.p')
+    model_path = os.path.join(output_path, "messages_receiver.p")
 
     print(f'loading messages using unique name: "{unique_name}"')
 
     train_dataset = MessageDataset(unique_name, DatasetType.Train)
-    train_dataloader = data.DataLoader(train_dataset, num_workers=1, pin_memory=True, shuffle=True, batch_size=args.batch_size)
+    train_dataloader = data.DataLoader(
+        train_dataset,
+        num_workers=1,
+        pin_memory=True,
+        shuffle=True,
+        batch_size=args.batch_size,
+    )
 
     validation_dataset = MessageDataset(unique_name, DatasetType.Valid)
-    validation_dataloader = data.DataLoader(validation_dataset, num_workers=1, pin_memory=True, shuffle=False, batch_size=args.batch_size)
+    validation_dataloader = data.DataLoader(
+        validation_dataset,
+        num_workers=1,
+        pin_memory=True,
+        shuffle=False,
+        batch_size=args.batch_size,
+    )
 
     test_dataset = MessageDataset(unique_name, DatasetType.Test)
-    test_dataloader = data.DataLoader(test_dataset, num_workers=1, pin_memory=True, shuffle=False, batch_size=args.batch_size)
+    test_dataloader = data.DataLoader(
+        test_dataset,
+        num_workers=1,
+        pin_memory=True,
+        shuffle=False,
+        batch_size=args.batch_size,
+    )
 
     pytorch_total_params = sum(p.numel() for p in model.parameters())
 
@@ -326,12 +385,11 @@ def baseline(args):
     print(model)
     print("Total number of parameters: {}".format(pytorch_total_params))
 
-
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     epoch = 0
     current_patience = args.patience
-    best_accuracy = -1.
+    best_accuracy = -1.0
     converged = False
 
     start_time = time.time()
@@ -339,33 +397,53 @@ def baseline(args):
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    images_path = os.path.join(output_path, 'samples')
+    images_path = os.path.join(output_path, "samples")
     if not os.path.exists(images_path):
         os.mkdir(images_path)
 
     iteration = load_model(model_path, model, optimizer)
 
     if args.test_mode:
-        test_images_path = os.path.join(images_path, 'test')
+        test_images_path = os.path.join(images_path, "test")
         if not os.path.exists(test_images_path):
             os.mkdir(test_images_path)
 
-        test_loss_meter, test_acc_meter = evaluate(model, criterion, test_dataloader, 0, device, test_images_path)
-        print(f'TEST results: loss: {test_loss_meter.avg} | accuracy: {test_acc_meter.avg}')
+        test_loss_meter, test_acc_meter = evaluate(
+            model, criterion, test_dataloader, 0, device, test_images_path
+        )
+        print(
+            f"TEST results: loss: {test_loss_meter.avg} | accuracy: {test_acc_meter.avg}"
+        )
         return
-
 
     print(header)
     while iteration < args.iterations:
         for (messages, original_targets) in train_dataloader:
-            print(f'{iteration}/{args.iterations}       \r', end='')
+            print(f"{iteration}/{args.iterations}       \r", end="")
 
             model.train()
 
-            _, _ = perform_iteration(model, criterion, optimizer, messages, original_targets, iteration, device, images_path, False)
+            _, _ = perform_iteration(
+                model,
+                criterion,
+                optimizer,
+                messages,
+                original_targets,
+                iteration,
+                device,
+                images_path,
+                False,
+            )
 
             if iteration % args.log_interval == 0:
-                valid_loss_meter, valid_acc_meter = evaluate(model, criterion, validation_dataloader, iteration, device, images_path)
+                valid_loss_meter, valid_acc_meter = evaluate(
+                    model,
+                    criterion,
+                    validation_dataloader,
+                    iteration,
+                    device,
+                    images_path,
+                )
 
                 new_best = False
                 average_valid_accuracy = valid_acc_meter.avg
@@ -374,7 +452,7 @@ def baseline(args):
                     current_patience -= 1
 
                     if current_patience <= 0:
-                        print('Model has converged. Stopping training...')
+                        print("Model has converged. Stopping training...")
                         converged = True
                         break
                 else:
@@ -383,17 +461,19 @@ def baseline(args):
                     current_patience = args.patience
                     save_model(model_path, model, optimizer, iteration)
 
-
-                print(log_template.format(
-                    time.time()-start_time,
-                    epoch,
-                    iteration,
-                    1 + iteration,
-                    args.iterations,
-                    100. * (1+iteration) / args.iterations,
-                    valid_loss_meter.avg,
-                    valid_acc_meter.avg,
-                    "BEST" if new_best else ""))
+                print(
+                    log_template.format(
+                        time.time() - start_time,
+                        epoch,
+                        iteration,
+                        1 + iteration,
+                        args.iterations,
+                        100.0 * (1 + iteration) / args.iterations,
+                        valid_loss_meter.avg,
+                        valid_acc_meter.avg,
+                        "BEST" if new_best else "",
+                    )
+                )
 
             iteration += 1
 
@@ -401,6 +481,7 @@ def baseline(args):
 
         if converged:
             break
+
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])

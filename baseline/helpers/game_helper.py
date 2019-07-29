@@ -68,7 +68,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
             discrete_latent_dimension=args.discrete_latent_dimension,
             discrete_communication=args.discrete_communication,
             gumbel_softmax=args.gumbel_softmax,
-            rl=args.rl
+            rl=args.rl,
         )
 
         receiver = Receiver(
@@ -78,7 +78,7 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
             hidden_size=args.hidden_size,
             cell_type=cell_type,
             genotype=genotype,
-            dataset_type=args.dataset_type
+            dataset_type=args.dataset_type,
         )
 
     if args.sender_path:
@@ -93,13 +93,14 @@ def get_trainer(
     sender,
     device,
     dataset_type,
-    receiver = None,
-    diagnostic_receiver = None,
+    receiver=None,
+    diagnostic_receiver=None,
     vqvae=False,
     rl=False,
     entropy_coefficient=1.0,
     myopic=False,
-    myopic_coefficient=0.1):
+    myopic_coefficient=0.1,
+):
     extract_features = dataset_type == "raw"
 
     return FullModel(
@@ -111,7 +112,9 @@ def get_trainer(
         vqvae=vqvae,
         rl=rl,
         myopic=myopic,
-        myopic_coefficient=myopic_coefficient)
+        myopic_coefficient=myopic_coefficient,
+    )
+
 
 def get_meta_data():
     train_meta_data = get_metadata_properties(dataset=DatasetType.Train)
@@ -127,7 +130,8 @@ def get_training_data(device, batch_size, k, debugging, dataset_type):
         batch_size=batch_size,
         k=k,
         debug=debugging,
-        dataset_type=dataset_type)
+        dataset_type=dataset_type,
+    )
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
     valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)
@@ -140,8 +144,7 @@ def get_raw_data(args, dataset=DatasetType.Valid):
         valid_raw = get_shapes_features(dataset=dataset, mode="raw")
         return valid_raw
     else:
-        raise ValueError(
-            "Unsupported task type for raw : {}".formate(args.task))
+        raise ValueError("Unsupported task type for raw : {}".formate(args.task))
 
 
 def save_example_images(args, filename):

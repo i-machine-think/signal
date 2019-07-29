@@ -21,11 +21,7 @@ def parse_arguments(args):
         "--seed", type=int, default=42, metavar="S", help="random seed (default: 42)"
     )
     parser.add_argument(
-        "--model-path",
-        type=str,
-        required=True,
-        metavar="S",
-        help="Model to be loaded",
+        "--model-path", type=str, required=True, metavar="S", help="Model to be loaded"
     )
     parser.add_argument(
         "--output-path",
@@ -37,7 +33,8 @@ def parse_arguments(args):
     parser.add_argument(
         "--device",
         type=str,
-        help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done")
+        help="Device to be used. Pick from none/cpu/cuda. If default none is used automatic check will be done",
+    )
 
     parser.add_argument(
         "--max-length",
@@ -89,31 +86,35 @@ def parse_arguments(args):
     args = parser.parse_args(args)
     return args
 
+
 def generate_unique_filename(max_length, vocab_size, seed, set_type):
-    name = f'max_len_{max_length}_vocab_{vocab_size}_seed_{seed}'
-    name += f'.{set_type}'
+    name = f"max_len_{max_length}_vocab_{vocab_size}_seed_{seed}"
+    name += f".{set_type}"
     return name
+
 
 def generate_messages_filename(max_length, vocab_size, seed, set_type):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, set_type)}.messages.npy'
+    name = f"{generate_unique_filename(max_length, vocab_size, seed, set_type)}.messages.npy"
     return name
+
 
 def generate_indices_filename(max_length, vocab_size, seed, set_type):
     """
     Generates a filename from baseline params (see baseline.py)
     """
-    name = f'{generate_unique_filename(max_length, vocab_size, seed, set_type)}.indices.npy'
+    name = f"{generate_unique_filename(max_length, vocab_size, seed, set_type)}.indices.npy"
     return name
+
 
 def sample_messages_from_dataset(model, args, dataset, dataset_type):
     messages = []
     indices = []
 
     for i, batch in enumerate(dataset):
-        print(f'{dataset_type}: {i}/{len(dataset)}       \r', end='')
+        print(f"{dataset_type}: {i}/{len(dataset)}       \r", end="")
         target, distractors, current_indices, _ = batch
 
         current_target_indices = current_indices[:, 0].detach().cpu().tolist()
@@ -121,21 +122,26 @@ def sample_messages_from_dataset(model, args, dataset, dataset_type):
         current_messages = model(target, distractors)
         messages.extend(current_messages.cpu().tolist())
 
-    messages_filename = generate_messages_filename(args.max_length, args.vocab_size, args.seed, dataset_type)
-    messages_filepath = os.path.join(args.output_path,  messages_filename)
+    messages_filename = generate_messages_filename(
+        args.max_length, args.vocab_size, args.seed, dataset_type
+    )
+    messages_filepath = os.path.join(args.output_path, messages_filename)
     np.save(messages_filepath, np.array(messages))
 
     # Added lines to save properties as np.save as well
     # Separate file is made, similar to generate_messages_filename
-    indices_filename = generate_indices_filename(args.max_length, args.vocab_size, args.seed, dataset_type)
+    indices_filename = generate_indices_filename(
+        args.max_length, args.vocab_size, args.seed, dataset_type
+    )
     indices_filepath = os.path.join(args.output_path, indices_filename)
     np.save(indices_filepath, np.array(indices))
+
 
 def baseline(args):
     args = parse_arguments(args)
 
     if not os.path.isfile(args.model_path):
-        raise Exception('Model path is invalid')
+        raise Exception("Model path is invalid")
 
     if args.device:
         device = torch.device(args.device)
@@ -151,22 +157,16 @@ def baseline(args):
     args.receiver_path = None
     # get sender and receiver models and save them
     sender, _, _ = get_sender_receiver(device, args)
-    sender.load_state_dict(checkpoint['sender'])
+    sender.load_state_dict(checkpoint["sender"])
     sender.greedy = True
 
-    model = get_trainer(
-        sender,
-        device,
-        dataset_type="raw")
+    model = get_trainer(sender, device, dataset_type="raw")
 
-    model.visual_module.load_state_dict(checkpoint['visual_module'])
+    model.visual_module.load_state_dict(checkpoint["visual_module"])
 
     train_data, validation_data, test_data = get_shapes_dataloader(
-        device=device,
-        batch_size=1024,
-        k=3,
-        debug=False,
-        dataset_type="raw")
+        device=device, batch_size=1024, k=3, debug=False, dataset_type="raw"
+    )
 
     model.to(device)
 
@@ -175,9 +175,10 @@ def baseline(args):
     if not os.path.exists(args.output_path):
         os.mkdir(args.output_path)
 
-    sample_messages_from_dataset(model, args, train_data, 'train')
-    sample_messages_from_dataset(model, args, validation_data, 'validation')
-    sample_messages_from_dataset(model, args, test_data, 'test')
+    sample_messages_from_dataset(model, args, train_data, "train")
+    sample_messages_from_dataset(model, args, validation_data, "validation")
+    sample_messages_from_dataset(model, args, test_data, "test")
+
 
 if __name__ == "__main__":
     baseline(sys.argv[1:])

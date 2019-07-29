@@ -66,13 +66,8 @@ def draw(shape, color, size, left, top, ctx):
     ctx.set_source_rgb(*rgb)
     ctx.fill()
 
-def get_target_image(
-        seed,
-        horizontal_position,
-        vertical_position,
-        shape,
-        color,
-        size):
+
+def get_target_image(seed, horizontal_position, vertical_position, shape, color, size):
 
     np.random.seed(seed)
 
@@ -91,12 +86,14 @@ def get_target_image(
     colors[horizontal_position][vertical_position] = color
     sizes[horizontal_position][vertical_position] = size
 
-    draw(shapes[horizontal_position][vertical_position],
+    draw(
+        shapes[horizontal_position][vertical_position],
         colors[horizontal_position][vertical_position],
         sizes[horizontal_position][vertical_position],
         vertical_position,
         horizontal_position,
-        ctx)
+        ctx,
+    )
 
     metadata = {"shapes": shapes, "colors": colors, "sizes": sizes}
 
@@ -104,22 +101,19 @@ def get_target_image(
 
 
 def generate_image(
-        seed,
-        horizontal_position,
-        vertical_position,
-        shape,
-        color,
-        size,
-        property_to_change: ImageProperty):
+    seed,
+    horizontal_position,
+    vertical_position,
+    shape,
+    color,
+    size,
+    property_to_change: ImageProperty,
+):
     np.random.seed(seed)
 
     target_image = get_target_image(
-        seed,
-        horizontal_position,
-        vertical_position,
-        shape,
-        color,
-        size)
+        seed, horizontal_position, vertical_position, shape, color, size
+    )
     target_image.data = target_image.data[:, :, 0:3]
 
     if property_to_change == ImageProperty.Shape:
@@ -143,7 +137,8 @@ def generate_image(
     for _ in range(n):
         data = np.zeros((WIDTH, HEIGHT, 4), dtype=np.uint8)
         surf = cairo.ImageSurface.create_for_data(
-            data, cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
+            data, cairo.FORMAT_ARGB32, WIDTH, HEIGHT
+        )
         ctx = cairo.Context(surf)
         ctx.set_source_rgb(0.0, 0.0, 0.0)
         ctx.paint()
@@ -183,12 +178,14 @@ def generate_image(
         colors[new_horizontal_position][new_vertical_position] = new_color
         sizes[new_horizontal_position][new_vertical_position] = new_size
 
-        draw(shapes[new_horizontal_position][new_vertical_position],
-             colors[new_horizontal_position][new_vertical_position],
-             sizes[new_horizontal_position][new_vertical_position],
-             new_vertical_position,
-             new_horizontal_position,
-             ctx)
+        draw(
+            shapes[new_horizontal_position][new_vertical_position],
+            colors[new_horizontal_position][new_vertical_position],
+            sizes[new_horizontal_position][new_vertical_position],
+            new_vertical_position,
+            new_horizontal_position,
+            ctx,
+        )
 
         value_to_change += 1
 
@@ -199,6 +196,7 @@ def generate_image(
 
     return target_image, result_images
 
+
 def get_random_set(target_images, all_images):
     co = str(np.random.randint(3))
     ro = str(np.random.randint(3))
@@ -207,9 +205,10 @@ def get_random_set(target_images, all_images):
     si = str(np.random.randint(2))
 
     pr = str(np.random.randint(5))
-    target = co+ro+sh+co+si+pr
+    target = co + ro + sh + co + si + pr
     print(target, all_images[target])
     return target_images[target], all_images[target]
+
 
 def generate_property_set(id_symbol):
     image_properties = list(map(int, ImageProperty))
@@ -224,9 +223,21 @@ def generate_property_set(id_symbol):
                 for horizontal_position in range(N_CELLS):
                     for vertical_position in range(N_CELLS):
                         for image_property in image_properties:
-                            target_image, current_images = generate_image(seed, horizontal_position, vertical_position, shape, color, size, image_property)
-                            all_images[f'{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}'] = current_images
-                            target_images[f'{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}'] = target_image
+                            target_image, current_images = generate_image(
+                                seed,
+                                horizontal_position,
+                                vertical_position,
+                                shape,
+                                color,
+                                size,
+                                image_property,
+                            )
+                            all_images[
+                                f"{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}"
+                            ] = current_images
+                            target_images[
+                                f"{horizontal_position}{vertical_position}{shape}{color}{size}{image_property}{id_symbol}"
+                            ] = target_image
 
     return target_images, all_images
 
@@ -241,14 +252,13 @@ def generate_property_set(id_symbol):
     # return all_images
 
 
-
 if __name__ == "__main__":
     all_images = generate_property_set()
 
-    pickle_target = open(f'data/target_dict_{str(len(all_images))}.p', 'rb')
+    pickle_target = open(f"data/target_dict_{str(len(all_images))}.p", "rb")
     target_dict = pickle.load(pickle_target)
 
-    pickle_distractors = open(f'data/distractor_dict_{str(len(all_images))}.p', 'rb')
+    pickle_distractors = open(f"data/distractor_dict_{str(len(all_images))}.p", "rb")
     distractors_dict = pickle.load(pickle_distractors)
 
     target, distractors = get_random_set(target_dict, distractors_dict)

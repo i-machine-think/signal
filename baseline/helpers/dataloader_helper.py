@@ -16,6 +16,7 @@ from enums.dataset_type import DatasetType
 
 file_helper = FileHelper()
 
+
 def get_shapes_features(device, dataset=DatasetType.Valid, mode="features"):
     """
     Returns numpy array with matching features
@@ -40,12 +41,7 @@ def get_shapes_features(device, dataset=DatasetType.Valid, mode="features"):
 
 
 def get_dataloaders(
-    device,
-    batch_size=16,
-    k=3,
-    debug=False,
-    dataset="all",
-    dataset_type="features"
+    device, batch_size=16, k=3, debug=False, dataset="all", dataset_type="features"
 ):
     """
     Returns dataloader for the train/valid/test datasets
@@ -68,16 +64,12 @@ def get_dataloaders(
 
         # All features are normalized with train mean and std
         valid_dataset = ShapesDataset(
-            valid_features,
-            mean=train_dataset.mean,
-            std=train_dataset.std,
-            raw=True)
+            valid_features, mean=train_dataset.mean, std=train_dataset.std, raw=True
+        )
 
         test_dataset = ShapesDataset(
-            test_features,
-            mean=train_dataset.mean,
-            std=train_dataset.std,
-            raw=True)
+            test_features, mean=train_dataset.mean, std=train_dataset.std, raw=True
+        )
 
     if dataset_type == "features":
 
@@ -92,26 +84,21 @@ def get_dataloaders(
 
         # All features are normalized with train mean and std
         valid_dataset = ShapesDataset(
-            valid_features,
-            mean=train_dataset.mean,
-            std=train_dataset.std)
+            valid_features, mean=train_dataset.mean, std=train_dataset.std
+        )
 
         test_dataset = ShapesDataset(
-            test_features,
-            mean=train_dataset.mean,
-            std=train_dataset.std)
+            test_features, mean=train_dataset.mean, std=train_dataset.std
+        )
 
     if dataset_type == "meta":
         train_meta = get_shapes_metadata(dataset=DatasetType.Train)
         valid_meta = get_shapes_metadata(dataset=DatasetType.Valid)
         test_meta = get_shapes_metadata(dataset=DatasetType.Test)
 
-        train_dataset = ShapesDataset(
-            train_meta.astype(np.float32), metadata=True)
-        valid_dataset = ShapesDataset(
-            valid_meta.astype(np.float32), metadata=True)
-        test_dataset = ShapesDataset(
-            test_meta.astype(np.float32), metadata=True)
+        train_dataset = ShapesDataset(train_meta.astype(np.float32), metadata=True)
+        valid_dataset = ShapesDataset(valid_meta.astype(np.float32), metadata=True)
+        test_dataset = ShapesDataset(test_meta.astype(np.float32), metadata=True)
 
     train_data = DataLoader(
         train_dataset,
@@ -154,12 +141,8 @@ def get_dataloaders(
 
 
 def get_shapes_dataloader(
-        device,
-        batch_size=16,
-        k=3,
-        debug=False,
-        dataset="all",
-        dataset_type="features"):
+    device, batch_size=16, k=3, debug=False, dataset="all", dataset_type="features"
+):
     """
     Args:
         batch_size (int, opt): batch size of dataloaders
@@ -176,4 +159,5 @@ def get_shapes_dataloader(
         k=k,
         debug=debug,
         dataset=dataset,
-        dataset_type=dataset_type)
+        dataset_type=dataset_type,
+    )

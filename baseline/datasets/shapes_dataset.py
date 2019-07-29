@@ -8,7 +8,14 @@ from PIL import Image
 
 class ShapesDataset:
     def __init__(
-        self, features, mean=None, std=None, metadata=False, raw=False, dataset=None, validation_set = False
+        self,
+        features,
+        mean=None,
+        std=None,
+        metadata=False,
+        raw=False,
+        dataset=None,
+        validation_set=False,
     ):
         self.metadata = metadata
         self.raw = raw
@@ -24,8 +31,7 @@ class ShapesDataset:
 
         if mean is None and type(features) == type({}):
 
-            imgs = np.asarray([features[key].data
-                                 for key in features])
+            imgs = np.asarray([features[key].data for key in features])
             mean = np.mean(imgs, axis=0)
             std = np.std(imgs, axis=0)
             std[np.nonzero(std == 0.0)] = 1.0  # nan is because of dividing by zero
@@ -41,10 +47,7 @@ class ShapesDataset:
             self.features = (features - self.mean) / (2 * self.std)
 
         self.transforms = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.ToTensor()
-            ]
+            [torchvision.transforms.ToPILImage(), torchvision.transforms.ToTensor()]
         )
 
     def __getitem__(self, indices):
@@ -56,7 +59,7 @@ class ShapesDataset:
 
             distractors = []
 
-            if self.raw:# and not self.validation_set:
+            if self.raw:  # and not self.validation_set:
                 target_img = self.transforms(target_img)
 
             # if self.validation_set:
@@ -65,7 +68,7 @@ class ShapesDataset:
             # print(len(distractors))
             return (target_img, distractors, indices, lkey)
 
-                # return (target_img, distractors, indices, lkey)
+            # return (target_img, distractors, indices, lkey)
         else:
             target_idx = indices[0]
             distractors_idxs = indices[1:]
@@ -79,15 +82,15 @@ class ShapesDataset:
 
             target_img = self.features[target_idx]
 
-        if self.raw:# and not self.validation_set:
+        if self.raw:  # and not self.validation_set:
             target_img = self.transforms(target_img)
 
         return (target_img, distractors, indices, 0)
 
     def __len__(self):
         if type(self.features) == type({}):
-            print('Dataset size is',len(self.features))
+            print("Dataset size is", len(self.features))
             return len(self.features)
         else:
-            print('Dataset size is',self.features.shape[0])
+            print("Dataset size is", self.features.shape[0])
             return self.features.shape[0]

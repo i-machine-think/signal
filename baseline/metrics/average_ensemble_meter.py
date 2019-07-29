@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class AverageEnsembleMeter:
     def __init__(self, number_of_values):
         self._number_of_values = number_of_values
