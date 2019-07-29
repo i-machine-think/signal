@@ -1,3 +1,9 @@
+signal/runs/*
+signal/results/*
+signal/data/features/
+signal/data/checkpoints/*.pt
+signal/data/*.pckl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -102,10 +108,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-/baseline/runs/
-/baseline/data/features/
-/baseline/data/*.pckl
-/baseline/results/*
 
 # runs
 /runs
@@ -119,7 +121,3 @@ venv.bak/
 
 # VSCode
 /.vscode
-
-#
-/baseline/data/checkpoints/*raw*
-/baseline/data/checkpoints/raw*

@@ -4,7 +4,6 @@ import torch
 from tensorboardX import SummaryWriter
 
 from metrics.rsa import representation_similarity_analysis
-from metrics.entropy import language_entropy
 
 
 class MetricsHelper:
@@ -56,7 +55,6 @@ class MetricsHelper:
             self._writer.add_scalar("rsa_sm", rsa_sm, i)
             self._writer.add_scalar("topological_similarity", topological_similarity, i)
             self._writer.add_scalar("pseudo_tre", pseudo_tre, i)
-            self._writer.add_scalar("language_entropy", l_entropy, i)
 
         if valid_acc_meter.avg > self._best_valid_acc:
             self._best_valid_acc = valid_acc_meter.avg
