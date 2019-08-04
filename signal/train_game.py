@@ -26,7 +26,6 @@ from helpers.metrics_helper import MetricsHelper
 from plotting import plot_data
 
 
-
 def parse_arguments(args):
     # Training settings
     parser = argparse.ArgumentParser(
@@ -40,7 +39,7 @@ def parse_arguments(args):
     parser.add_argument(
         "--dataset-type",
         type=str,
-        default="raw",
+        default="features",
         metavar="S",
         help="type of input used by dataset pick from raw/features/meta (default features)",
     )
@@ -222,7 +221,8 @@ def parse_arguments(args):
         metavar="S",
         help="Additional folder within runs/",
     )
-    parser.add_argument("--disable-print", help="Disable printing", action="store_true")
+    parser.add_argument("--disable-print",
+                        help="Disable printing", action="store_true")
     parser.add_argument(
         "--patience",
         type=int,
@@ -265,7 +265,8 @@ def save_model_state(
         checkpoint_state["receiver"] = model.receiver.state_dict()
 
     if model.diagnostic_receiver:
-        checkpoint_state["diagnostic_receiver"] = model.diagnostic_receiver.state_dict()
+        checkpoint_state["diagnostic_receiver"] = model.diagnostic_receiver.state_dict(
+        )
 
     if epoch:
         checkpoint_state["epoch"] = epoch
@@ -295,7 +296,8 @@ def load_model_state(model, model_path):
         model.receiver.load_state_dict(checkpoint["receiver"])
 
     if "diagnostic_receiver" in checkpoint.keys() and checkpoint["diagnostic_receiver"]:
-        model.diagnostic_receiver.load_state_dict(checkpoint["diagnostic_receiver"])
+        model.diagnostic_receiver.load_state_dict(
+            checkpoint["diagnostic_receiver"])
 
     best_score = -1.0
     if "best_score" in checkpoint.keys() and checkpoint["best_score"]:
@@ -433,7 +435,7 @@ def baseline(args):
         for train_batch in train_data:
             print(f"{iteration}/{args.iterations}       \r", end="")
 
-            ### !!! This is the complete training procedure. Rest is only logging!
+            # !!! This is the complete training procedure. Rest is only logging!
             _, _ = train_helper.train_one_batch(
                 model, train_batch, optimizer, train_meta_data, device
             )
@@ -466,7 +468,8 @@ def baseline(args):
                     new_best = True
                     best_accuracy = average_valid_accuracy
                     current_patience = args.patience
-                    save_model_state(model, model_path, epoch, iteration, best_accuracy)
+                    save_model_state(model, model_path, epoch,
+                                     iteration, best_accuracy)
 
                 # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
                 if not args.disable_print:
