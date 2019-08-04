@@ -95,9 +95,12 @@ def get_dataloaders(
         valid_meta = get_shapes_metadata(dataset=DatasetType.Valid)
         test_meta = get_shapes_metadata(dataset=DatasetType.Test)
 
-        train_dataset = ShapesDataset(train_meta.astype(np.float32), metadata=True)
-        valid_dataset = ShapesDataset(valid_meta.astype(np.float32), metadata=True)
-        test_dataset = ShapesDataset(test_meta.astype(np.float32), metadata=True)
+        train_dataset = ShapesDataset(
+            train_meta.astype(np.float32), metadata=True)
+        valid_dataset = ShapesDataset(
+            valid_meta.astype(np.float32), metadata=True)
+        test_dataset = ShapesDataset(
+            test_meta.astype(np.float32), metadata=True)
 
     train_data = DataLoader(
         train_dataset,
@@ -148,8 +151,9 @@ def get_shapes_dataloader(
         k (int, opt): number of distractors
     """
 
-    if not os.path.exists(file_helper.train_features_path):
-        print("Features files not present - generating dataset")
+    if not os.path.exists(file_helper.train_input_path):
+        print("Input files not present - generating dataset")
+        print(file_helper.train_features_path)
         generate_shapes_dataset()
 
     return get_dataloaders(
