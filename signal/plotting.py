@@ -35,7 +35,7 @@ def plot_data(filename_data, used_rl):
     color = "tab:red"
     ax1.set_xlabel("Iteration")
 
-    if used_rl:
+    if not used_rl:
         ax1.set_ylabel("Loss", color=color)
         ax1.plot(iterations, losses, color=color)
         ax1.tick_params(axis="y", labelcolor=color)
