@@ -7,7 +7,7 @@ from tensorboardX import SummaryWriter
 class Logger:
     def __init__(self, run_folder, print_logs=True, tensorbard=True):
 
-        self._writer = SummaryWriter(run_folder, max_queue=1)
+        self._writer = SummaryWriter(run_folder)
         self._run_folder = run_folder
         self._print_logs = print_logs
         self._tensorboard = tensorbard
