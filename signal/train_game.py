@@ -468,7 +468,6 @@ def baseline(args):
                                      iteration, best_accuracy)
 
                 metrics = {
-                    'iteration': iteration,
                     'loss': valid_loss_meter.avg,
                     'accuracy': valid_acc_meter.avg,
                 }
@@ -477,7 +476,7 @@ def baseline(args):
                     metrics['rl loss'] = rl_loss_meter.avg
                     metrics['entropy'] = entropy_meter.avg
 
-                logger.log_metrics(metrics)
+                logger.log_metrics(iteration, metrics)
 
                 iterations.append(iteration)
                 losses.append(valid_loss_meter.avg)
