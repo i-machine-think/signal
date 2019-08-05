@@ -324,7 +324,7 @@ def baseline(args):
     model_name = train_helper.get_filename_from_baseline_params(args)
     run_folder = file_helper.get_run_folder(args.folder, model_name)
 
-    logger = Logger()
+    logger = Logger(print_logs=(not args.disable_print))
 
     # get sender and receiver models and save them
     sender, receiver, diagnostic_receiver = get_sender_receiver(device, args)
