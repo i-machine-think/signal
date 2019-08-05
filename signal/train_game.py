@@ -21,9 +21,7 @@ from helpers.game_helper import (
 )
 from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
-from helpers.metrics_helper import MetricsHelper
-
-from plotting import plot_data
+from utils.logger import Logger
 
 
 def parse_arguments(args):
@@ -326,7 +324,7 @@ def baseline(args):
     model_name = train_helper.get_filename_from_baseline_params(args)
     run_folder = file_helper.get_run_folder(args.folder, model_name)
 
-    metrics_helper = MetricsHelper(run_folder, args.seed)
+    logger = Logger()
 
     # get sender and receiver models and save them
     sender, receiver, diagnostic_receiver = get_sender_receiver(device, args)
@@ -471,30 +469,17 @@ def baseline(args):
                     save_model_state(model, model_path, epoch,
                                      iteration, best_accuracy)
 
-                # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
-                if not args.disable_print:
+                metrics = {
+                    'iteration': iteration,
+                    'loss': valid_loss_meter.avg,
+                    'accuracy': valid_acc_meter.avg,
+                }
+                if args.rl:
+                    metrics['hinge loss'] = hinge_loss_meter.avg
+                    metrics['rl loss'] = rl_loss_meter.avg
+                    metrics['entropy'] = entropy_meter.avg
 
-                    if not args.rl:
-                        print(
-                            "{}/{} Iterations: val loss: {:.3f}, val accuracy: {:.3f}".format(
-                                iteration,
-                                args.iterations,
-                                valid_loss_meter.avg,
-                                valid_acc_meter.avg,
-                            )
-                        )
-                    else:
-                        print(
-                            "{}/{} Iterations: val loss: {:.3f}, val hinge loss: {:.3f}, val rl loss: {:.3f}, val entropy: {:.3f}, val accuracy: {:.3f}".format(
-                                iteration,
-                                args.iterations,
-                                valid_loss_meter.avg,
-                                hinge_loss_meter.avg,
-                                rl_loss_meter.avg,
-                                entropy_meter.avg,
-                                valid_acc_meter.avg,
-                            )
-                        )
+                logger.log_metrics(metrics)
 
                 iterations.append(iteration)
                 losses.append(valid_loss_meter.avg)
