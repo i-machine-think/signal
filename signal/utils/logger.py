@@ -1,4 +1,5 @@
 import yaml
+import csv
 import os
 from tensorboardX import SummaryWriter
 
@@ -44,3 +45,16 @@ class Logger:
         if self._tensorboard:
             for key, value in metrics.items():
                 self._writer.add_scalar(key, value, global_step=iteration)
+
+        csv_path = os.path.join(self._run_folder, 'metrics.csv')
+        with open(csv_path, "a") as f:
+            wr = csv.writer(f)
+            # Add header line if file is empty
+            if os.path.getsize(csv_path) == 0:
+                keys = ['iteration']
+                keys.extend(metrics.keys())
+                wr.writerow(keys)
+
+            values = [iteration]
+            values.extend(metrics.values())
+            wr.writerow(values)
