@@ -1,7 +1,12 @@
-class Logger:
-    def __init__(self, print_logs=True):
+import yaml
+import os
 
-        self.print_logs = print_logs
+
+class Logger:
+    def __init__(self, run_folder, print_logs=True):
+
+        self._run_folder = run_folder
+        self._print_logs = print_logs
         pass
 
     def _print_args(self, args):
@@ -13,8 +18,11 @@ class Logger:
         print(s)
 
     def log_args(self, args):
-        if self.print_logs:
+        if self._print_logs:
             self._print_args(args)
+
+        args_path = os.path.join(self._run_folder, 'args.yaml')
+        yaml.dump(vars(args), open(args_path, 'w'))
 
     def _print_metrics(self, metrics):
         s = f'{metrics["iteration"]}'
@@ -26,5 +34,5 @@ class Logger:
         print(s)
 
     def log_metrics(self, metrics):
-        if self.print_logs:
+        if self._print_logs:
             self._print_metrics(metrics)
