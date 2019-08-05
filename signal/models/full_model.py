@@ -8,7 +8,6 @@ from .receiver import Receiver
 from .sender import Sender
 
 
-
 class FullModel(nn.Module):
     def __init__(
         self,
@@ -32,6 +31,8 @@ class FullModel(nn.Module):
         self.extract_features = extract_features
         if extract_features:
             self.visual_module = CNN(sender.hidden_size)
+        else:
+            self.visual_module = None
 
         self.device = device
         self.output_len = self.sender.output_len
@@ -58,7 +59,8 @@ class FullModel(nn.Module):
         messages = messages * mask.unsqueeze(2)
 
         # give full probability (1) to eos tag (used as padding in this case)
-        messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
+        messages[:, :,
+                 self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
 
         return messages
 
@@ -134,7 +136,8 @@ class FullModel(nn.Module):
             d_score = torch.bmm(d, r_transform).squeeze()
             all_scores[:, i] = d_score
             hinge_loss += torch.max(
-                torch.tensor(0.0, device=self.device), 1.0 - target_score + d_score
+                torch.tensor(0.0, device=self.device),
+                1.0 - target_score + d_score
             )  # This creates the sum in equation (1) of the original paper!
             i += 1
 

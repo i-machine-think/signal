@@ -21,9 +21,7 @@ from helpers.game_helper import (
 )
 from helpers.train_helper import TrainHelper
 from helpers.file_helper import FileHelper
-from helpers.metrics_helper import MetricsHelper
-
-from plotting import plot_data
+from utils.logger import Logger
 
 
 def parse_arguments(args):
@@ -326,7 +324,8 @@ def baseline(args):
     model_name = train_helper.get_filename_from_baseline_params(args)
     run_folder = file_helper.get_run_folder(args.folder, model_name)
 
-    metrics_helper = MetricsHelper(run_folder, args.seed)
+    logger = Logger(run_folder, print_logs=(not args.disable_print))
+    logger.log_args(args)
 
     # get sender and receiver models and save them
     sender, receiver, diagnostic_receiver = get_sender_receiver(device, args)
@@ -378,9 +377,6 @@ def baseline(args):
 
     train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
 
-    # dump arguments
-    pickle.dump(args, open(f"{run_folder}/experiment_params.p", "wb"))
-
     pytorch_total_params = sum(p.numel() for p in model.parameters())
 
     if not args.disable_print:
@@ -424,13 +420,6 @@ def baseline(args):
         )
         return
 
-    iterations = []
-    losses = []
-    hinge_losses = []
-    rl_losses = []
-    entropies = []
-    accuracies = []
-
     while iteration < args.iterations:
         for train_batch in train_data:
             print(f"{iteration}/{args.iterations}       \r", end="")
@@ -471,38 +460,16 @@ def baseline(args):
                     save_model_state(model, model_path, epoch,
                                      iteration, best_accuracy)
 
-                # Skip for now  <--- What does this comment mean? printing is not disabled, so this will be shown, right?
-                if not args.disable_print:
-
-                    if not args.rl:
-                        print(
-                            "{}/{} Iterations: val loss: {:.3f}, val accuracy: {:.3f}".format(
-                                iteration,
-                                args.iterations,
-                                valid_loss_meter.avg,
-                                valid_acc_meter.avg,
-                            )
-                        )
-                    else:
-                        print(
-                            "{}/{} Iterations: val loss: {:.3f}, val hinge loss: {:.3f}, val rl loss: {:.3f}, val entropy: {:.3f}, val accuracy: {:.3f}".format(
-                                iteration,
-                                args.iterations,
-                                valid_loss_meter.avg,
-                                hinge_loss_meter.avg,
-                                rl_loss_meter.avg,
-                                entropy_meter.avg,
-                                valid_acc_meter.avg,
-                            )
-                        )
-
-                iterations.append(iteration)
-                losses.append(valid_loss_meter.avg)
+                metrics = {
+                    'loss': valid_loss_meter.avg,
+                    'accuracy': valid_acc_meter.avg,
+                }
                 if args.rl:
-                    hinge_losses.append(hinge_loss_meter.avg)
-                    rl_losses.append(rl_loss_meter.avg)
-                    entropies.append(entropy_meter.avg)
-                accuracies.append(valid_acc_meter.avg)
+                    metrics['hinge loss'] = hinge_loss_meter.avg
+                    metrics['rl loss'] = rl_loss_meter.avg
+                    metrics['entropy'] = entropy_meter.avg
+
+                logger.log_metrics(iteration, metrics)
 
             iteration += 1
             if iteration >= args.iterations:
@@ -512,41 +479,6 @@ def baseline(args):
 
         if converged:
             break
-
-    # prepare writing of data
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    dir_path = dir_path.replace("/baseline", "")
-    timestamp = str(datetime.datetime.now())
-    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_entropy_coefficient_{}_myopic_{}_mc_{}_seed_{}_{}.csv".format(
-        args.vqvae,
-        args.rl,
-        args.discrete_communication,
-        args.gumbel_softmax,
-        args.discrete_latent_number,
-        args.discrete_latent_dimension,
-        args.beta,
-        args.entropy_coefficient,
-        args.myopic,
-        args.myopic_coefficient,
-        args.seed,
-        timestamp,
-    )
-    full_filename = os.path.join(dir_path, filename)
-
-    # write data
-    d = [iterations, losses, hinge_losses, rl_losses, entropies, accuracies]
-    export_data = zip_longest(*d, fillvalue="")
-    with open(full_filename, "w", encoding="ISO-8859-1", newline="") as myfile:
-        wr = csv.writer(myfile)
-        wr.writerow(
-            ("iteration", "loss", "hinge loss", "rl loss", "entropy", "accuracy")
-        )
-        wr.writerows(export_data)
-    myfile.close()
-
-    # plotting
-    print(filename)
-    plot_data(filename, args)
 
     return run_folder
 

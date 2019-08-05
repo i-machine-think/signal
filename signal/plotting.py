@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import csv
 import os
+import argparse
 
 
-def plot_data(filename_data, args):
+def plot_data(filename_data, used_rl):
     iterations = []
     losses = []
     hinge_losses = []
@@ -11,23 +12,17 @@ def plot_data(filename_data, args):
     entropies = []
     accuracies = []
 
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    dir_path = dir_path.replace("/baseline", "")
-    full_filename_data = os.path.join(dir_path, filename_data)
+    filename, _ = os.path.splitext(filename_data)
+    plot_path = filename + '_plot.png'
 
-    filename_plot = filename_data.replace("output_data/", "plots/").replace(
-        ".csv", ".png"
-    )
-    full_filename_plot = os.path.join(dir_path, filename_plot)
-
-    with open(full_filename_data, "r") as csvfile:
+    with open(filename_data, "r") as csvfile:
         plots = csv.reader(csvfile, delimiter=",")
         index = 0
         for row in plots:
             if index > 0:
                 iterations.append(float(row[0]))
                 losses.append(float(row[1]))
-                if args.rl:
+                if used_rl:
                     hinge_losses.append(float(row[2]))
                     rl_losses.append(float(row[3]))
                     entropies.append(float(row[4]))
@@ -41,7 +36,7 @@ def plot_data(filename_data, args):
     color = "tab:red"
     ax1.set_xlabel("Iteration")
 
-    if not args.rl:
+    if not used_rl:
         ax1.set_ylabel("Loss", color=color)
         ax1.plot(iterations, losses, color=color)
         ax1.tick_params(axis="y", labelcolor=color)
@@ -59,11 +54,23 @@ def plot_data(filename_data, args):
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     color = "tab:blue"
-    ax2.set_ylabel("Accuracy", color=color)  # we already handled the x-label with ax1
+    # we already handled the x-label with ax1
+    ax2.set_ylabel("Accuracy", color=color)
 
     ax2.plot(iterations, accuracies, color=color)
     ax2.tick_params(axis="y", labelcolor=color)
 
     # saving of figure
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.savefig(full_filename_plot)
+    plt.savefig(plot_path)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path', type=str,
+                        help='Path to the csv with metrics.')
+    parser.add_argument('--rl', action='store_true',
+                        help='Add when REINFORCE was used for training the sender')
+    args = parser.parse_args()
+
+    plot_data(args.path, args.rl)
