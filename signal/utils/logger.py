@@ -7,6 +7,10 @@ class Logger:
 
         self._run_folder = run_folder
         self._print_logs = print_logs
+
+        if not os.path.exists(run_folder):
+            os.makedirs(run_folder)
+
         pass
 
     def _print_args(self, args):
