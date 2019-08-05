@@ -325,6 +325,7 @@ def baseline(args):
     run_folder = file_helper.get_run_folder(args.folder, model_name)
 
     logger = Logger(print_logs=(not args.disable_print))
+    logger.log_args(args)
 
     # get sender and receiver models and save them
     sender, receiver, diagnostic_receiver = get_sender_receiver(device, args)
@@ -375,9 +376,6 @@ def baseline(args):
     )
 
     train_meta_data, valid_meta_data, test_meta_data = get_meta_data()
-
-    # dump arguments
-    pickle.dump(args, open(f"{run_folder}/experiment_params.p", "wb"))
 
     pytorch_total_params = sum(p.numel() for p in model.parameters())
 
