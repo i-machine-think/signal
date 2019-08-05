@@ -153,7 +153,6 @@ def get_shapes_dataloader(
 
     if not os.path.exists(file_helper.train_input_path):
         print("Input files not present - generating dataset")
-        print(file_helper.train_features_path)
         generate_shapes_dataset()
 
     return get_dataloaders(
