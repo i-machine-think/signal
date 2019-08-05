@@ -420,13 +420,6 @@ def baseline(args):
         )
         return
 
-    iterations = []
-    losses = []
-    hinge_losses = []
-    rl_losses = []
-    entropies = []
-    accuracies = []
-
     while iteration < args.iterations:
         for train_batch in train_data:
             print(f"{iteration}/{args.iterations}       \r", end="")
@@ -478,14 +471,6 @@ def baseline(args):
 
                 logger.log_metrics(iteration, metrics)
 
-                iterations.append(iteration)
-                losses.append(valid_loss_meter.avg)
-                if args.rl:
-                    hinge_losses.append(hinge_loss_meter.avg)
-                    rl_losses.append(rl_loss_meter.avg)
-                    entropies.append(entropy_meter.avg)
-                accuracies.append(valid_acc_meter.avg)
-
             iteration += 1
             if iteration >= args.iterations:
                 break
@@ -494,41 +479,6 @@ def baseline(args):
 
         if converged:
             break
-
-    # prepare writing of data
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    dir_path = dir_path.replace("/baseline", "")
-    timestamp = str(datetime.datetime.now())
-    filename = "output_data/vqvae_{}_rl_{}_dc_{}_gs_{}_dln_{}_dld_{}_beta_{}_entropy_coefficient_{}_myopic_{}_mc_{}_seed_{}_{}.csv".format(
-        args.vqvae,
-        args.rl,
-        args.discrete_communication,
-        args.gumbel_softmax,
-        args.discrete_latent_number,
-        args.discrete_latent_dimension,
-        args.beta,
-        args.entropy_coefficient,
-        args.myopic,
-        args.myopic_coefficient,
-        args.seed,
-        timestamp,
-    )
-    full_filename = os.path.join(dir_path, filename)
-
-    # write data
-    d = [iterations, losses, hinge_losses, rl_losses, entropies, accuracies]
-    export_data = zip_longest(*d, fillvalue="")
-    with open(full_filename, "w", encoding="ISO-8859-1", newline="") as myfile:
-        wr = csv.writer(myfile)
-        wr.writerow(
-            ("iteration", "loss", "hinge loss", "rl loss", "entropy", "accuracy")
-        )
-        wr.writerows(export_data)
-    myfile.close()
-
-    # plotting
-    print(filename)
-    plot_data(filename, args)
 
     return run_folder
 
