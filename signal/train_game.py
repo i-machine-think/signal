@@ -39,7 +39,7 @@ def parse_arguments(args):
     parser.add_argument(
         "--dataset-type",
         type=str,
-        default="raw",
+        default="features",
         metavar="S",
         help="type of input used by dataset pick from raw/features/meta (default features)",
     )
