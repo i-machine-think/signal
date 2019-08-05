@@ -12,7 +12,8 @@ def plot_data(filename_data, used_rl):
     entropies = []
     accuracies = []
 
-    plot_path = filename_data.replace('.csv', '_plot.png')
+    filename, _ = os.path.splitext(filename_data)
+    plot_path = filename + '_plot.png'
 
     with open(filename_data, "r") as csvfile:
         plots = csv.reader(csvfile, delimiter=",")
