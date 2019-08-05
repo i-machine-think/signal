@@ -136,8 +136,8 @@ class FullModel(nn.Module):
             d_score = torch.bmm(d, r_transform).squeeze()
             all_scores[:, i] = d_score
             hinge_loss += torch.max(
-                torch.tensor(0.0, device=self.device), 1.0 -
-                target_score + d_score
+                torch.tensor(0.0, device=self.device),
+                1.0 - target_score + d_score
             )  # This creates the sum in equation (1) of the original paper!
             i += 1
 
