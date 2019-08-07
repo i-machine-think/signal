@@ -5,8 +5,17 @@ from tensorboardX import SummaryWriter
 
 
 class Logger:
-    def __init__(self, run_folder, print_logs=True, tensorbard=True):
+    """This class helps logging meta data and metrics of a run. It stores all logs in files in the given folder.
+    """
 
+    def __init__(self, run_folder, print_logs=True, tensorbard=True):
+        """Constructor. Configures logging methods and destination.
+
+        Args:
+            run_folder (str): path to folder where log files will be saved to
+            print_logs (bool): wether logs should be printed to console
+            tensorboard (bool): wether a tensorboard event log should be created
+        """
         self._writer = SummaryWriter(run_folder)
         self._run_folder = run_folder
         self._print_logs = print_logs
@@ -26,6 +35,11 @@ class Logger:
         print(s)
 
     def log_args(self, args):
+        """Log the arguments/hyper parameters of the run.
+
+        Args:
+            args (argparse.namespace): Arguments used to configure the run.
+        """
         if self._print_logs:
             self._print_args(args)
 
@@ -39,6 +53,12 @@ class Logger:
         print(s)
 
     def log_metrics(self, iteration, metrics):
+        """Log the metrics for one iteration.
+
+        Args:
+            iteration (int): Current iteration/step.
+            metrics (dict): Keys are the names of metrics and values are the measure value for each.
+        """
         if self._print_logs:
             self._print_metrics(iteration, metrics)
 
