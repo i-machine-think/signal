@@ -8,10 +8,10 @@ from .shape_helper import generate_shapes_dataset
 from .feature_helper import get_features
 from .file_helper import FileHelper
 
-from datasets.shapes_dataset import ShapesDataset
-from samplers.images_sampler import ImagesSampler
+from ..datasets.shapes_dataset import ShapesDataset
+from ..samplers.images_sampler import ImagesSampler
 
-from enums.dataset_type import DatasetType
+from ..enums.dataset_type import DatasetType
 
 file_helper = FileHelper()
 
@@ -95,12 +95,9 @@ def get_dataloaders(
         valid_meta = get_shapes_metadata(dataset=DatasetType.Valid)
         test_meta = get_shapes_metadata(dataset=DatasetType.Test)
 
-        train_dataset = ShapesDataset(
-            train_meta.astype(np.float32), metadata=True)
-        valid_dataset = ShapesDataset(
-            valid_meta.astype(np.float32), metadata=True)
-        test_dataset = ShapesDataset(
-            test_meta.astype(np.float32), metadata=True)
+        train_dataset = ShapesDataset(train_meta.astype(np.float32), metadata=True)
+        valid_dataset = ShapesDataset(valid_meta.astype(np.float32), metadata=True)
+        test_dataset = ShapesDataset(test_meta.astype(np.float32), metadata=True)
 
     train_data = DataLoader(
         train_dataset,

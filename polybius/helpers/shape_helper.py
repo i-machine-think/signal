@@ -6,7 +6,7 @@ from random import shuffle
 from .image_helper import get_image
 from .file_helper import FileHelper
 
-from enums.dataset_type import DatasetType
+from ..enums.dataset_type import DatasetType
 
 SEED = 42
 

@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 
@@ -59,8 +58,7 @@ class FullModel(nn.Module):
         messages = messages * mask.unsqueeze(2)
 
         # give full probability (1) to eos tag (used as padding in this case)
-        messages[:, :,
-                 self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
+        messages[:, :, self.sender.eos_id] += (mask == 0).type(dtype=messages.dtype)
 
         return messages
 
@@ -96,7 +94,7 @@ class FullModel(nn.Module):
             )  # This is the "f" function in the paper! No eta exists.
             distractors = [self.visual_module(d) for d in distractors]
 
-        messages, lengths, entropy, _, _, loss_2_3, message_logits = self.sender.forward(
+        messages, lengths, entropy, _, _, loss_2_3, message_logits = self.sender(
             hidden_state=target
         )  # The first hidden state is the target, as in Referential Games paper.
 
@@ -109,7 +107,7 @@ class FullModel(nn.Module):
 
         final_loss = 0
 
-        r_transform, _ = self.receiver.forward(
+        r_transform, _ = self.receiver(
             messages=messages
         )  # r_transform is the last hidden receiver state, which is then processed by some g (eta inverse), which here probably is the identity...
 
@@ -136,8 +134,7 @@ class FullModel(nn.Module):
             d_score = torch.bmm(d, r_transform).squeeze()
             all_scores[:, i] = d_score
             hinge_loss += torch.max(
-                torch.tensor(0.0, device=self.device),
-                1.0 - target_score + d_score
+                torch.tensor(0.0, device=self.device), 1.0 - target_score + d_score
             )  # This creates the sum in equation (1) of the original paper!
             i += 1
 

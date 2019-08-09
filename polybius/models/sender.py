@@ -11,7 +11,7 @@ from .vector_quantization import (
     HardMax,
 )
 
-from helpers.utils_helper import UtilsHelper
+from ..helpers.utils_helper import UtilsHelper
 
 
 class Sender(nn.Module):
@@ -23,12 +23,11 @@ class Sender(nn.Module):
         sos_id,
         device,
         eos_id=None,
+        input_size=64,
         embedding_size=256,
         hidden_size=512,
         greedy=False,
         cell_type="lstm",
-        genotype=None,
-        dataset_type="meta",
         reset_params=True,
         tau=1.2,
         vqvae=False,  # If True, use VQ instead of Gumbel Softmax
@@ -64,6 +63,7 @@ class Sender(nn.Module):
 
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
+        self.input_size = input_size
         self.greedy = greedy
 
         if cell_type == "lstm":
@@ -90,6 +90,10 @@ class Sender(nn.Module):
         self.discrete_communication = discrete_communication
         self.beta = beta
         self.gumbel_softmax = gumbel_softmax
+
+        self.input_module = nn.Identity()
+        if self.input_size != self.hidden_size:
+            self.input_module = nn.Linear(input_size, hidden_size)
 
         if self.vqvae:
             self.e = nn.Parameter(
@@ -204,11 +208,11 @@ class Sender(nn.Module):
         Hidden state here represents the encoded image/metadata - initializes the RNN from it.
         """
 
-        # hidden_state = self.input_module(hidden_state)
+        hidden_state = self.input_module(hidden_state)
         state, batch_size = self._init_state(hidden_state, type(self.rnn))
 
         # Init output
-        if not (self.vqvae and not self.discrete_communication and not self.rl):
+        if not self.vqvae and self.discrete_communication and self.rl:
             output = [
                 torch.zeros(
                     (batch_size, self.vocab_size),
@@ -253,7 +257,7 @@ class Sender(nn.Module):
 
             embeds.append(emb)
 
-            state = self.rnn.forward(emb, state)
+            state = self.rnn(emb, state)
 
             if type(self.rnn) is nn.LSTMCell:
                 h, _ = state

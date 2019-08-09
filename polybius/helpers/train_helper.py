@@ -2,9 +2,9 @@ import random
 import numpy as np
 import torch
 
-from metrics.average_meter import AverageMeter
+from ..metrics.average_meter import AverageMeter
 
-from models.full_model import FullModel
+from ..models.full_model import FullModel
 
 
 class TrainHelper:

@@ -1,15 +1,15 @@
 import torch
 import numpy as np
 
-from data.agent_vocab import AgentVocab
+from ..data.agent_vocab import AgentVocab
 from .metadata_helper import get_shapes_metadata, get_metadata_properties
 from .dataloader_helper import get_shapes_features, get_shapes_dataloader
 
-from enums.dataset_type import DatasetType
+from ..enums.dataset_type import DatasetType
 
-from models.receiver import Receiver
-from models.sender import Sender
-from models.full_model import FullModel
+from ..models.receiver import Receiver
+from ..models.sender import Sender
+from ..models.full_model import FullModel
 
 
 def get_sender_receiver(device, args) -> (Sender, Receiver):
@@ -20,65 +20,34 @@ def get_sender_receiver(device, args) -> (Sender, Receiver):
     diagnostic_receiver = None
 
     cell_type = "lstm"
-    genotype = {}
-    if args.single_model:
-        """
-        sender = ShapesSingleModel(
-            args.vocab_size,
-            args.max_length,
-            vocab.bound_idx,
-            embedding_size=args.embedding_size,
-            hidden_size=args.hidden_size,
-            greedy=args.greedy,
-            cell_type=cell_type,
-            genotype=genotype,
-            dataset_type=args.dataset_type,
-        )
+    # @TODO!!! ADD single model
 
+    sender = Sender(
+        args.vocab_size,
+        args.max_length,
+        vocab.bound_idx,
+        device,
+        embedding_size=args.embedding_size,
+        hidden_size=args.hidden_size,
+        greedy=args.greedy,
+        cell_type=cell_type,
+        tau=args.tau,
+        vqvae=args.vqvae,
+        beta=args.beta,
+        discrete_latent_number=args.discrete_latent_number,
+        discrete_latent_dimension=args.discrete_latent_dimension,
+        discrete_communication=args.discrete_communication,
+        gumbel_softmax=args.gumbel_softmax,
+        rl=args.rl,
+    )
 
-        receiver = ShapesSingleModel(
-            args.vocab_size,
-            args.max_length,
-            vocab.bound_idx,
-            embedding_size=args.embedding_size,
-            hidden_size=args.hidden_size,
-            greedy=args.greedy,
-            cell_type=cell_type,
-            genotype=genotype,
-            dataset_type=args.dataset_type,
-        )
-        """
-    else:
-        sender = Sender(
-            args.vocab_size,
-            args.max_length,
-            vocab.bound_idx,
-            device,
-            embedding_size=args.embedding_size,
-            hidden_size=args.hidden_size,
-            greedy=args.greedy,
-            cell_type=cell_type,
-            genotype=genotype,
-            dataset_type=args.dataset_type,
-            tau=args.tau,
-            vqvae=args.vqvae,
-            beta=args.beta,
-            discrete_latent_number=args.discrete_latent_number,
-            discrete_latent_dimension=args.discrete_latent_dimension,
-            discrete_communication=args.discrete_communication,
-            gumbel_softmax=args.gumbel_softmax,
-            rl=args.rl,
-        )
-
-        receiver = Receiver(
-            args.vocab_size,
-            device,
-            embedding_size=args.embedding_size,
-            hidden_size=args.hidden_size,
-            cell_type=cell_type,
-            genotype=genotype,
-            dataset_type=args.dataset_type,
-        )
+    receiver = Receiver(
+        args.vocab_size,
+        device,
+        embedding_size=args.embedding_size,
+        hidden_size=args.hidden_size,
+        cell_type=cell_type,
+    )
 
     if args.sender_path:
         sender = torch.load(args.sender_path)
@@ -133,7 +102,10 @@ def get_training_data(device, batch_size, k, debugging, dataset_type):
     )
 
     valid_meta_data = get_shapes_metadata(dataset=DatasetType.Valid)
-    valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)
+    if dataset_type != "meta":
+        valid_features = get_shapes_features(device=device, dataset=DatasetType.Valid)
+    else:
+        valid_features = valid_meta_data
 
     return (train_data, valid_data, test_data, valid_meta_data, valid_features)
 

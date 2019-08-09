@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-from enums.dataset_type import DatasetType
+from ..enums.dataset_type import DatasetType
 from .file_helper import FileHelper
 
 file_helper = FileHelper()
