@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from datasets.image_dataset import ImageDataset
+from ..datasets.image_dataset import ImageDataset
 from .file_helper import FileHelper
 
 BATCH_SIZE = 16  # batch size used to extract features

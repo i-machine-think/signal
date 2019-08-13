@@ -4,9 +4,9 @@ import numpy as np
 
 import torch.utils.data as data
 
-from enums.dataset_type import DatasetType
-from helpers.file_helper import FileHelper
-from helpers.metadata_helper import get_metadata_properties
+from ..enums.dataset_type import DatasetType
+from ..helpers.file_helper import FileHelper
+from ..helpers.metadata_helper import get_metadata_properties
 
 
 class DiagnosticDataset(data.Dataset):

@@ -3,7 +3,7 @@ import pickle
 import torch
 from tensorboardX import SummaryWriter
 
-from metrics.rsa import representation_similarity_analysis
+from ..metrics.rsa import representation_similarity_analysis
 
 
 class MetricsHelper:

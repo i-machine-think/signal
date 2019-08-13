@@ -1,7 +1,8 @@
 import os
 import pickle
 
-from helpers.file_helper import FileHelper
+from ..helpers.file_helper import FileHelper
+
 
 class AgentVocab(object):
     """

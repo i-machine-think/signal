@@ -10,13 +10,13 @@ class Receiver(nn.Module):
         embedding_size=256,
         hidden_size=512,
         cell_type="lstm",
-        genotype=None,
-        dataset_type="meta",
+        output_size=64,
     ):
         super().__init__()
 
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
+        self.output_size = output_size
         self.cell_type = cell_type
         self.device = device
 
@@ -30,7 +30,10 @@ class Receiver(nn.Module):
         self.embedding = nn.Parameter(
             torch.empty((vocab_size, embedding_size), dtype=torch.float32)
         )
-        # self.embedding = nn.Embedding(vocab_size, embedding_size)
+
+        self.output_module = nn.Identity()
+        if self.output_size != self.hidden_size:
+            self.output_module = nn.Linear(hidden_size, output_size)
 
         self.reset_parameters()
 
@@ -68,6 +71,6 @@ class Receiver(nn.Module):
             h = h[0]  # keep only hidden state
 
         out = h
-        # out = self.input_module(h)
+        out = self.output_module(h)
 
         return out, emb

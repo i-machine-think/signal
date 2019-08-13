@@ -1,6 +1,6 @@
-# signal
+# sygnal
 
-Version alpha for the project signal
+Version alpha for the project sygnal
 
 ## Setup
 

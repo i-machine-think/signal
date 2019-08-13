@@ -1,7 +1,7 @@
 import os
 import datetime
 
-from enums.dataset_type import DatasetType
+from ..enums.dataset_type import DatasetType
 
 DATA_FOLDER = "data"
 CHECKPOINTS_FOLDER = "checkpoints"
@@ -63,8 +63,7 @@ class FileHelper:
             self._data_path, FEATURES_FOLDER, "test.metadata.p"
         )
 
-        self._messages_folder_path = os.path.join(
-            self._data_path, MESSAGES_FOLDER)
+        self._messages_folder_path = os.path.join(self._data_path, MESSAGES_FOLDER)
 
         self._train_distractors_path = os.path.join(
             self._data_path, STEP3_FOLDER, "distractor_dict.train.p"
@@ -155,12 +154,11 @@ class FileHelper:
 
     def get_run_folder(self, sub_folder, model_name):
         dt = datetime.datetime.now()
-        timestamp = dt.strftime('%Y%m%d_%H%M%S')
+        timestamp = dt.strftime("%Y%m%d_%H%M%S")
         if not sub_folder:
             run_folder = os.path.join(RUNS_FOLDER, model_name, timestamp)
         else:
-            run_folder = os.path.join(
-                RUNS_FOLDER, sub_folder, model_name, timestamp)
+            run_folder = os.path.join(RUNS_FOLDER, sub_folder, model_name, timestamp)
 
         return run_folder
 
@@ -197,8 +195,7 @@ class FileHelper:
             return self.test_metadata_path
 
     def get_vocabulary_path(self, vocabulary_size: int):
-        vocabulary_path = os.path.join(
-            self._data_path, f"dict_{vocabulary_size}.pckl")
+        vocabulary_path = os.path.join(self._data_path, f"dict_{vocabulary_size}.pckl")
         return vocabulary_path
 
     def get_set_path(self, set_name: str):
@@ -206,6 +203,5 @@ class FileHelper:
         return set_path
 
     def create_unique_model_path(self, model_name: str):
-        receiver_path = os.path.join(
-            self._checkpoints_folder_path, f"{model_name}.pt")
+        receiver_path = os.path.join(self._checkpoints_folder_path, f"{model_name}.pt")
         return receiver_path

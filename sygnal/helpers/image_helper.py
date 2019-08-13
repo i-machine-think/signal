@@ -1,6 +1,6 @@
 import numpy as np
 import cairo
-from data.image import Image
+from ..data.image import Image
 
 N_CELLS = 3
 

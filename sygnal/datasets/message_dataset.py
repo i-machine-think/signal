@@ -5,8 +5,8 @@ import numpy as np
 import torchvision.transforms
 import torch.utils.data as data
 
-from enums.dataset_type import DatasetType
-from helpers.file_helper import FileHelper
+from ..enums.dataset_type import DatasetType
+from ..helpers.file_helper import FileHelper
 
 
 class MessageDataset(data.Dataset):
