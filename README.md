@@ -1,6 +1,6 @@
-# polybius
+# sygnal
 
-Version alpha for the project polybius
+Version alpha for the project sygnal
 
 ## Setup
 
